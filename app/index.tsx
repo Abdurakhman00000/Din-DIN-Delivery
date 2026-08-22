@@ -1,10 +1,8 @@
-// Главная страница курьера
-import { Text, View } from 'react-native';
+// Точка входа — перенаправление в основные разделы
+import { Redirect } from 'expo-router';
 
-export default function HomeScreen() {
-  return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text>Din Din Delivery — Courier</Text>
-    </View>
-  );
+import { ROUTES } from '@/constants/routes';
+
+export default function Index() {
+  return <Redirect href={ROUTES.tabs.map} />;
 }

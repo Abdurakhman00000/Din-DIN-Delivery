@@ -3,6 +3,10 @@ import { configureStore } from '@reduxjs/toolkit';
 
 import { baseApi } from '@/services/api/baseApi';
 
+import '@/features/map/api/mapApi';
+import '@/features/history/api/historyApi';
+import '@/features/profile/api/profileApi';
+
 export const store = configureStore({
   reducer: {
     [baseApi.reducerPath]: baseApi.reducer,

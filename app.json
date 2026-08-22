@@ -44,7 +44,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Din Din Delivery to use your location for deliveries."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true

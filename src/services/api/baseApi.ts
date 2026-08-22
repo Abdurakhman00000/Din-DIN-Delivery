@@ -7,5 +7,5 @@ export const baseApi = createApi({
     baseUrl: '/', // TODO: заменить на API URL по ТЗ
   }),
   endpoints: () => ({}),
-  tagTypes: [],
+  tagTypes: ['MapStats', 'CourierStatus', 'CourierProfile', 'History', 'Places', 'IncomingOrder'],
 });
