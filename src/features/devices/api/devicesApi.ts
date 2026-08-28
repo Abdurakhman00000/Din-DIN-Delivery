@@ -13,7 +13,7 @@ export type RegisterDeviceRequest = {
 export const devicesApi = baseApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
-    registerDevice: builder.mutation<void, RegisterDeviceRequest>({
+    registerDevice: builder.mutation<null, RegisterDeviceRequest>({
       query: (body) => ({
         url: API_ENDPOINTS.courier.devices,
         method: 'POST',

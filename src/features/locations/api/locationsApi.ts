@@ -9,7 +9,7 @@ import type { LocationPing } from '../types';
 export const locationsApi = baseApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
-    sendLocationBatch: builder.mutation<void, LocationPing[]>({
+    sendLocationBatch: builder.mutation<null, LocationPing[]>({
       query: (pings) => ({
         url: API_ENDPOINTS.locations.batch,
         method: 'POST',
