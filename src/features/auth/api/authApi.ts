@@ -2,6 +2,7 @@
 import { API_ENDPOINTS } from '@/constants/api';
 import { baseApi } from '@/services/api/baseApi';
 import { clearTokens, getRefreshToken, saveTokens } from '@/services/api/tokens';
+import { setupPushNotifications } from '@/services/notifications/pushNotifications';
 
 import type { AuthTokenPair, LoginRequest, LogoutRequest, RefreshRequest } from '../types';
 
@@ -17,6 +18,9 @@ export const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { queryFulfilled }) {
         const { data } = await queryFulfilled;
         await saveTokens(data.access_token, data.refresh_token);
+        // Best-effort, ничего не блокирует — см. комментарий в самом
+        // сервисе (пуш может быть недоступен без Firebase-конфига).
+        void setupPushNotifications();
       },
     }),
     refreshTokens: builder.mutation<AuthTokenPair, RefreshRequest>({

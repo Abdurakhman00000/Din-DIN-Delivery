@@ -13,3 +13,15 @@ export async function getDeviceId(): Promise<string> {
   await setStorageString(DEVICE_ID_KEY, id);
   return id;
 }
+
+/**
+ * Не криптографический UUID — для Idempotency-Key заголовка (см.
+ * deliveriesApi.ts) достаточно уникальности на одну попытку запроса,
+ * не непредсказуемости. Тот же уровень строгости, что и у getDeviceId
+ * выше, не поднимаем его искусственно новой зависимостью (expo-crypto).
+ */
+export function generateRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}

@@ -1,6 +1,8 @@
-// Мок-данные карты (заменятся ответом API)
-import type { IncomingOrder, MapPlace } from '../types';
-import { BISHKEK_CENTER } from './bishkek';
+// Мок-данные карты (заменятся ответом API). MOCK_INCOMING_ORDER убран
+// вместе с fake-флоу заказа (см. useCourierSession) — реальные заказы
+// теперь идут через GET /api/courier/deliveries/active, макета для них
+// больше нет и не нужно.
+import type { MapPlace } from '../types';
 
 export const MOCK_MAP_STATS = {
   activeOrders: '2,2',
@@ -21,20 +23,3 @@ export const MOCK_PLACES: MapPlace[] = [
   { id: '11', name: 'Парк Панфилова', address: 'ул. Пушкина, Бишкек' },
   { id: '12', name: 'Аэропорт Манас', address: 'аэропорт Манас, Бишкек' },
 ];
-
-export const MOCK_INCOMING_ORDER: IncomingOrder = {
-  id: 'order-demo-1',
-  portionsLabel: '3 порции',
-  durationLabel: '12 мин',
-  distanceLabel: '2.4 км',
-  deliveryDurationLabel: '8 мин',
-  deliveryDistanceLabel: '1.8 км',
-  pickupLabel: 'Забор',
-  pickupAddress: 'ПВЗ №42, ул. Советская 12',
-  dropoffLabel: 'Доставка',
-  dropoffAddress: 'ул. Киевская 114, кв. 15',
-  comment: 'Позвонить за 5 минут до приезда',
-  courier: { latitude: BISHKEK_CENTER.latitude, longitude: BISHKEK_CENTER.longitude },
-  pickup: { latitude: 42.8824, longitude: 74.5822 },
-  dropoff: { latitude: 42.8681, longitude: 74.6038 },
-};

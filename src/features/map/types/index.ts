@@ -1,18 +1,10 @@
-// Типы для раздела «Карта»
-import type { AvatarSource } from '@/constants/app';
+// Типы для раздела «Карта». Состояние смены/заказа теперь берётся из
+// features/shifts (useCourierSession) и features/deliveries — здесь
+// остаётся только то, что относится к самой карте.
 
 export type CourierMapStats = {
   activeOrders: string;
   rating: string;
-};
-
-export type CourierOnlineStatus = {
-  isOnline: boolean;
-};
-
-export type CourierProfilePreview = {
-  avatarUrl: AvatarSource;
-  fullName: string;
 };
 
 export type MapPlace = {
@@ -31,33 +23,4 @@ export type MapRegion = {
 export type MapCoordinate = {
   latitude: number;
   longitude: number;
-};
-
-export type CourierShiftStatus =
-  | 'offline'
-  | 'waiting'
-  | 'incoming'
-  | 'toPickup'
-  | 'atPickup'
-  | 'toDropoff'
-  | 'awaitingPayment'
-  | 'completed';
-
-export type OrderPaymentStatus = 'pending' | 'paid' | 'unpaid';
-
-export type IncomingOrder = {
-  id: string;
-  portionsLabel: string;
-  durationLabel: string;
-  distanceLabel: string;
-  deliveryDurationLabel: string;
-  deliveryDistanceLabel: string;
-  pickupLabel: string;
-  pickupAddress: string;
-  dropoffLabel: string;
-  dropoffAddress: string;
-  comment: string;
-  courier: MapCoordinate;
-  pickup: MapCoordinate;
-  dropoff: MapCoordinate;
 };

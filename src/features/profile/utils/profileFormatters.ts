@@ -1,19 +1,24 @@
 import type { CourierProfile, ProfileInfoRow } from '../types';
 import { formatLocalDigits } from '@/utils/phone';
 
+// Ровно то, что реально бывает на бэке (couriers/models.py) — не
+// "велосипед"/"авто", которых в системе нет.
 const VEHICLE_LABELS: Record<string, string> = {
   foot: 'Пешком',
-  bicycle: 'Велосипед',
-  car: 'Авто',
+  scooter: 'Мопед',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   offline: 'Не на линии',
   online: 'На линии',
-  busy: 'Занят',
+  suspended: 'Заблокирован',
 };
 
-function formatDate(value: string): string {
+function formatDate(value: string | null): string {
+  if (!value) {
+    return '—';
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -73,4 +78,17 @@ export function buildProfileInfoRows(profile: CourierProfile): ProfileInfoRow[] 
     { label: 'ПВЗ', value: shortId(profile.pickup_point_id), icon: 'location-outline' },
     { label: 'Обновлён', value: formatDate(profile.updated_at), icon: 'time-outline' },
   ];
+}
+
+export function getProfileInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return '?';
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 }

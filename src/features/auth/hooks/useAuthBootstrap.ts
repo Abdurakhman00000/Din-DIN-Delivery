@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { profileApi } from '@/features/profile/api/profileApi';
 import { getAccessToken, getRefreshToken, refreshAccessToken } from '@/services/api/tokens';
+import { setupPushNotifications } from '@/services/notifications/pushNotifications';
 import { useAppDispatch } from '@/store/hooks';
 
 import { setBootstrapped } from '../store/authSlice';
@@ -30,6 +31,11 @@ export function useAuthBootstrap() {
 
       if (authenticated) {
         dispatch(profileApi.endpoints.getCourierMe.initiate(undefined, { forceRefetch: true }));
+        // Сессия восстановлена без нового логина (просто перезапуск
+        // приложения) — токен устройства мог ещё не быть
+        // зарегистрирован в этом запуске, поэтому та же best-effort
+        // регистрация, что и после явного входа (см. authApi.ts).
+        void setupPushNotifications();
       }
     }
 

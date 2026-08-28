@@ -1,94 +1,86 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { COLORS, SHADOW } from '@/constants/theme';
+import type { ActiveDelivery } from '@/features/deliveries/types';
+import { formatDistanceKm, straightLineDistanceKm } from '@/utils/geo';
 
-import type { CourierShiftStatus, IncomingOrder, OrderPaymentStatus } from '../types';
+import type { MapCoordinate } from '../types';
 
-type TripPhase = Extract<
-  CourierShiftStatus,
-  'toPickup' | 'atPickup' | 'toDropoff' | 'awaitingPayment'
->;
+type TripPhase = 'to_pickup' | 'to_customer';
 
 type ActiveTripCardProps = {
-  order: IncomingOrder;
+  delivery: ActiveDelivery;
   phase: TripPhase;
-  paymentStatus?: OrderPaymentStatus;
+  courierPosition: MapCoordinate | null;
 };
 
-const PHASE_COPY: Record<
-  TripPhase,
-  { status: string; addressKey: 'pickupAddress' | 'dropoffAddress'; timeKey: 'durationLabel' | 'deliveryDurationLabel'; distanceKey: 'distanceLabel' | 'deliveryDistanceLabel' }
-> = {
-  toPickup: {
-    status: 'Еду в пункт выдачи',
-    addressKey: 'pickupAddress',
-    timeKey: 'durationLabel',
-    distanceKey: 'distanceLabel',
-  },
-  atPickup: {
-    status: 'На месте у ПВЗ',
-    addressKey: 'pickupAddress',
-    timeKey: 'durationLabel',
-    distanceKey: 'distanceLabel',
-  },
-  toDropoff: {
-    status: 'Еду к клиенту',
-    addressKey: 'dropoffAddress',
-    timeKey: 'deliveryDurationLabel',
-    distanceKey: 'deliveryDistanceLabel',
-  },
-  awaitingPayment: {
-    status: 'Ожидание оплаты',
-    addressKey: 'dropoffAddress',
-    timeKey: 'deliveryDurationLabel',
-    distanceKey: 'deliveryDistanceLabel',
-  },
-};
+export function ActiveTripCard({ delivery, phase, courierPosition }: ActiveTripCardProps) {
+  const isToPickup = phase === 'to_pickup';
 
-export function ActiveTripCard({
-  order,
-  phase,
-  paymentStatus = 'pending',
-}: ActiveTripCardProps) {
-  const copy = PHASE_COPY[phase];
+  const address = isToPickup
+    ? // Координаты/адрес точки выдачи — пока не на проде (см. флоу-документ
+      // backend'а, "Чего пока нет"), fallback на понятный текст, а не на
+      // пустоту или "undefined" на экране.
+      (delivery.pickup_point_address ?? 'Адрес точки — уточняется')
+    : delivery.customer_address;
+
+  const destination: MapCoordinate | null = isToPickup
+    ? delivery.pickup_point_latitude != null && delivery.pickup_point_longitude != null
+      ? { latitude: delivery.pickup_point_latitude, longitude: delivery.pickup_point_longitude }
+      : null
+    : { latitude: delivery.customer_latitude, longitude: delivery.customer_longitude };
+
+  const distanceLabel =
+    courierPosition && destination
+      ? formatDistanceKm(straightLineDistanceKm(courierPosition, destination))
+      : null;
+
+  const bundleLabel =
+    delivery.bundle_id && delivery.bundle_position
+      ? `Заказ ${delivery.bundle_position} из 2 · `
+      : '';
+
+  const canCall = !isToPickup && !!delivery.customer_phone;
 
   return (
     <View style={[styles.card, SHADOW.soft]}>
       <View style={styles.topRow}>
         <View style={styles.info}>
-          <Text style={styles.status}>{copy.status}</Text>
-          <Text style={styles.address}>{order[copy.addressKey]}</Text>
+          <Text style={styles.status}>
+            {bundleLabel}
+            {isToPickup ? 'Еду за заказом' : 'Еду к клиенту'} · №{delivery.display_number}
+          </Text>
+          <Text style={styles.address}>{address}</Text>
         </View>
-        <View style={styles.eta}>
-          <Text style={styles.etaTime}>{order[copy.timeKey]}</Text>
-          <Text style={styles.etaDistance}>{order[copy.distanceKey]}</Text>
-        </View>
+        {distanceLabel ? (
+          <View style={styles.eta}>
+            <Text style={styles.etaDistance}>{distanceLabel}</Text>
+          </View>
+        ) : null}
       </View>
 
-      {phase === 'awaitingPayment' ? (
-        <View style={[styles.payment, paymentStatus === 'paid' && styles.paymentPaid]}>
+      <View style={styles.actions}>
+        <Pressable
+          style={[styles.action, !canCall && styles.actionDisabled]}
+          disabled={!canCall}
+          onPress={() => {
+            if (delivery.customer_phone) {
+              Linking.openURL(`tel:${delivery.customer_phone}`);
+            }
+          }}
+        >
           <Ionicons
-            name={paymentStatus === 'paid' ? 'checkmark-circle' : 'time-outline'}
+            name="call-outline"
             size={16}
-            color={paymentStatus === 'paid' ? COLORS.primary : COLORS.gray600}
+            color={canCall ? COLORS.gray900 : COLORS.gray400}
           />
-          <Text style={[styles.paymentText, paymentStatus === 'paid' && styles.paymentTextPaid]}>
-            {paymentStatus === 'paid' ? 'Клиент оплатил' : 'Ожидаем оплату клиента'}
+          <Text style={[styles.actionText, !canCall && styles.actionTextDisabled]}>
+            Позвонить
           </Text>
-        </View>
-      ) : (
-        <View style={styles.actions}>
-          <Pressable style={styles.action}>
-            <Ionicons name="call-outline" size={16} color={COLORS.gray900} />
-            <Text style={styles.actionText}>Позвонить</Text>
-          </Pressable>
-          <Pressable style={styles.action}>
-            <Ionicons name="help-circle-outline" size={16} color={COLORS.gray900} />
-            <Text style={styles.actionText}>Помощь</Text>
-          </Pressable>
-        </View>
-      )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -117,22 +109,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   address: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: COLORS.gray900,
   },
   eta: {
     alignItems: 'flex-end',
   },
-  etaTime: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.gray900,
-  },
   etaDistance: {
-    fontSize: 13,
-    color: COLORS.gray400,
-    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.gray600,
   },
   actions: {
     flexDirection: 'row',
@@ -148,29 +135,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 10,
   },
+  actionDisabled: {
+    opacity: 0.5,
+  },
   actionText: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.gray900,
   },
-  payment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.gray100,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  paymentPaid: {
-    backgroundColor: '#ECFDF3',
-  },
-  paymentText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray600,
-  },
-  paymentTextPaid: {
-    color: COLORS.primary,
+  actionTextDisabled: {
+    color: COLORS.gray400,
   },
 });

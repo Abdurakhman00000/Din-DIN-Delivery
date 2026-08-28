@@ -8,6 +8,10 @@ import '@/features/auth/api/authApi';
 import '@/features/map/api/mapApi';
 import '@/features/history/api/historyApi';
 import '@/features/profile/api/profileApi';
+import '@/features/deliveries/api/deliveriesApi';
+import '@/features/shifts/api/shiftsApi';
+import '@/features/locations/api/locationsApi';
+import '@/features/devices/api/devicesApi';
 
 export const store = configureStore({
   reducer: {

@@ -2,72 +2,145 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  useMarkDeliveredMutation,
+  useMarkPickedUpMutation,
+} from '@/features/deliveries/api/deliveriesApi';
+import type { ChecklistItemIn } from '@/features/deliveries/types';
+import { useCourierSession } from '@/features/shifts';
+
 import { ActiveTripCard } from '../components/ActiveTripCard';
-import { CompletedOrderSheet } from '../components/CompletedOrderSheet';
+import { ChecklistSheet } from '../components/ChecklistSheet';
 import { CourierMapView, type CourierMapViewRef } from '../components/CourierMapView';
 import { CourierMarker } from '../components/CourierMarker';
+import { DeliveredToast } from '../components/DeliveredToast';
 import { GoOnlineButton } from '../components/GoOnlineButton';
-import { IncomingOrderSheet } from '../components/IncomingOrderSheet';
 import { MapHeader } from '../components/MapHeader';
 import { MapSearchSheet } from '../components/MapSearchSheet';
 import { MapLeftControls, MapRightControls } from '../components/MapSideControls';
 import { OnlineToast } from '../components/OnlineToast';
-import { useCourierShift } from '../hooks/useCourierShift';
+import { useCourierPosition } from '../hooks/useCourierPosition';
 
 export function MapScreen() {
   const mapRef = useRef<CourierMapViewRef>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const shift = useCourierShift();
-  const showRouteOnMap = shift.isToPickup || shift.isToDropoff;
-  const showIdleControls = !shift.isIncoming && !shift.isActiveTrip && !shift.isCompleted;
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [deliveredToast, setDeliveredToast] = useState<{ number: string } | null>(null);
+
+  const session = useCourierSession();
+  const { state, primaryDelivery } = session;
+
+  const [markPickedUp, pickedUpState] = useMarkPickedUpMutation();
+  const [markDelivered, deliveredState] = useMarkDeliveredMutation();
+
+  const courierPosition = useCourierPosition(state === 'to_pickup' || state === 'to_customer');
+
+  // Только что вышел на линию — короткий тост "ожидайте заказов".
+  // Показываем ровно там, где произошло событие (успешный вызов
+  // goOnline в handleGoOnline ниже) — не из эффекта, реагирующего на
+  // производное состояние сессии.
+  const [justWentOnline, setJustWentOnline] = useState(false);
 
   useEffect(() => {
-    if (!shift.order) {
+    if (!primaryDelivery || !courierPosition) {
       mapRef.current?.clearRoute();
       return;
     }
 
-    if (shift.isToPickup) {
-      mapRef.current?.showRoute(shift.order.courier, shift.order.pickup, 'A');
+    if (state === 'to_pickup') {
+      const destination =
+        primaryDelivery.pickup_point_latitude != null &&
+        primaryDelivery.pickup_point_longitude != null
+          ? {
+              latitude: primaryDelivery.pickup_point_latitude,
+              longitude: primaryDelivery.pickup_point_longitude,
+            }
+          : null;
+      if (destination) {
+        mapRef.current?.showRoute(courierPosition, destination, 'A');
+      } else {
+        mapRef.current?.clearRoute();
+      }
       return;
     }
 
-    if (shift.isToDropoff) {
-      mapRef.current?.showRoute(shift.order.pickup, shift.order.dropoff, 'B');
+    if (state === 'to_customer') {
+      mapRef.current?.showRoute(
+        courierPosition,
+        { latitude: primaryDelivery.customer_latitude, longitude: primaryDelivery.customer_longitude },
+        'B',
+      );
       return;
     }
 
     mapRef.current?.clearRoute();
-  }, [shift.isToDropoff, shift.isToPickup, shift.order]);
+  }, [state, primaryDelivery, courierPosition]);
 
-  const action = getTripAction(shift);
+  async function handleConfirmChecklist(checked: Record<string, boolean>) {
+    if (!primaryDelivery) {
+      return;
+    }
+    const checklist: ChecklistItemIn[] = primaryDelivery.items.map((item) => ({
+      item_id: item.id,
+      is_checked: !!checked[item.id],
+    }));
+    try {
+      await markPickedUp({ deliveryId: primaryDelivery.id, checklist }).unwrap();
+      setChecklistOpen(false);
+    } catch {
+      // Ошибка (422 — неполный чек-лист/не совпал состав, 409 — заказ
+      // уже не в том статусе) остаётся видна через pickedUpState.error —
+      // сама шторка не закрывается, курьер видит форму и может
+      // поправить/повторить.
+    }
+  }
+
+  async function handleGoOnline() {
+    try {
+      await session.goOnline();
+      setJustWentOnline(true);
+      setTimeout(() => setJustWentOnline(false), 3000);
+    } catch {
+      // Сеть/бэкенд недоступны — просто остаёмся оффлайн, кнопка
+      // снова активна и курьер может повторить попытку сам.
+    }
+  }
+
+  async function handleDeliver() {
+    if (!primaryDelivery) {
+      return;
+    }
+    const number = primaryDelivery.display_number;
+    try {
+      await markDelivered({ deliveryId: primaryDelivery.id }).unwrap();
+      setDeliveredToast({ number });
+      setTimeout(() => setDeliveredToast(null), 3000);
+    } catch {
+      // См. комментарий в handleConfirmChecklist — ошибка видна через
+      // deliveredState.error, кнопка просто останется активной.
+    }
+  }
+
+  const showIdleControls = state === 'offline' || state === 'waiting';
 
   return (
     <View style={styles.container}>
       <CourierMapView ref={mapRef} />
-      {showRouteOnMap ? null : <CourierMarker />}
+      {state === 'to_pickup' || state === 'to_customer' ? null : <CourierMarker />}
 
       <SafeAreaView style={styles.topOverlay} edges={['top']}>
-        {shift.isActiveTrip && shift.order ? (
+        {primaryDelivery && (state === 'to_pickup' || state === 'to_customer') ? (
           <ActiveTripCard
-            order={shift.order}
-            phase={
-              shift.isToPickup
-                ? 'toPickup'
-                : shift.isAtPickup
-                  ? 'atPickup'
-                  : shift.isToDropoff
-                    ? 'toDropoff'
-                    : 'awaitingPayment'
-            }
-            paymentStatus={shift.paymentStatus}
+            delivery={primaryDelivery}
+            phase={state}
+            courierPosition={courierPosition}
           />
         ) : (
           <MapHeader />
         )}
       </SafeAreaView>
 
-      <OnlineToast visible={shift.toastVisible} />
+      <OnlineToast visible={justWentOnline} />
 
       {showIdleControls ? (
         <>
@@ -83,49 +156,46 @@ export function MapScreen() {
           </View>
           <View style={styles.bottomOverlay}>
             <GoOnlineButton
-              label={shift.isWaiting ? 'На линии' : 'На линию'}
-              blinking={shift.blinking}
-              disabled={shift.isWaiting}
-              onPress={shift.goOnline}
+              label={state === 'waiting' ? 'На линии' : 'На линию'}
+              disabled={state === 'waiting' || session.isStartingShift}
+              onPress={handleGoOnline}
             />
           </View>
         </>
       ) : null}
 
-      {action ? (
+      {state === 'to_pickup' && primaryDelivery ? (
         <View style={styles.bottomOverlay}>
-          <GoOnlineButton label={action.label} onPress={action.onPress} />
+          <GoOnlineButton label="Забрал" onPress={() => setChecklistOpen(true)} />
         </View>
       ) : null}
 
-      {shift.isIncoming && shift.order ? (
-        <IncomingOrderSheet
-          order={shift.order}
-          onAccept={shift.acceptOrder}
-          onDecline={shift.declineOrder}
+      {state === 'to_customer' && primaryDelivery ? (
+        <View style={styles.bottomOverlay}>
+          <GoOnlineButton
+            label={deliveredState.isLoading ? 'Отправляем…' : 'Доставил'}
+            disabled={deliveredState.isLoading}
+            onPress={handleDeliver}
+          />
+        </View>
+      ) : null}
+
+      {checklistOpen && primaryDelivery ? (
+        <ChecklistSheet
+          items={primaryDelivery.items}
+          loading={pickedUpState.isLoading}
+          onConfirm={handleConfirmChecklist}
+          onCancel={() => setChecklistOpen(false)}
         />
       ) : null}
 
-      {shift.isCompleted && shift.order ? (
-        <CompletedOrderSheet order={shift.order} onComplete={shift.completeOrder} />
+      {deliveredToast ? (
+        <DeliveredToast visible={!!deliveredToast} displayNumber={deliveredToast.number} />
       ) : null}
 
       <MapSearchSheet visible={searchOpen} onClose={() => setSearchOpen(false)} />
     </View>
   );
-}
-
-function getTripAction(shift: ReturnType<typeof useCourierShift>) {
-  if (shift.isToPickup) {
-    return { label: 'Я на месте', onPress: shift.arriveAtPickup };
-  }
-  if (shift.isAtPickup) {
-    return { label: 'Забрал еду', onPress: shift.confirmPickup };
-  }
-  if (shift.isToDropoff) {
-    return { label: 'Я прибыл', onPress: shift.arriveAtDropoff };
-  }
-  return null;
 }
 
 const styles = StyleSheet.create({
