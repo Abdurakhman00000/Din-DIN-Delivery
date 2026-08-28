@@ -1,51 +1,67 @@
-// Push-уведомления (FCM) — единственный надёжный канал, когда
-// приложение свёрнуто (WS живёт только на переднем плане, см.
-// courierSocket.ts). См. флоу-документ backend'а, раздел "Push (FCM)":
-// придёт одновременно с WS-событием, с тем же типом события в data —
-// используем для роутинга тапа, не для самих данных заказа (в самом
-// уведомлении только заголовок, полные данные всегда через GET /active).
-//
-// ВАЖНО — внешняя зависимость, не решается одним кодом: бэкенд ждёт
-// настоящий FCM-токен ("не Expo Push Token, не Firebase Installation ID
-// — именно токен, полученный через FCM SDK", см. DeviceRegisterIn в
-// Swagger), поэтому здесь используется getDevicePushTokenAsync
-// (нативный токен платформы), а не более простой getExpoPushTokenAsync.
-// Но сам нативный токен на Android в принципе не появится без
-// google-services.json (регистрация Android-приложения в том же
-// Firebase-проекте, что уже настроен на бэке) — файла с реальными
-// учётными данными Firebase-проекта, которого в этом репозитории нет и
-// быть не должно (секрет). На iOS понадобится свой push-сертификат/ключ
-// в том же Firebase-проекте. До того, как эти файлы добавят в проект
-// (Belek/бэкенд-команда, у них уже есть Firebase-проект) —
-// registerForPushNotificationsAsync() не упадёт, но вернёт null,
-// и push просто не будет доходить — то же самое поведение, что и
-// LoggingPushSender на бэке до того, как туда завели Firebase.
+// Push-уведомления (FCM). В Expo Go на Android (SDK 53+) remote push
+// недоступен — модуль нельзя импортировать на верхнем уровне, иначе
+// приложение падает при старте. Используем lazy-import + пропуск в Expo Go.
 
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 
-import { devicesApi, useRegisterDeviceMutation } from '@/features/devices/api/devicesApi';
-import { store } from '@/store/store';
 import { getAppPlatform, getAppVersion } from '@/utils/appVersion';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+
+let notificationsModulePromise: Promise<NotificationsModule | null> | null = null;
+let handlerConfigured = false;
+
+function isExpoGo(): boolean {
+  return Constants.executionEnvironment === 'storeClient';
+}
+
+async function loadNotificationsModule(): Promise<NotificationsModule | null> {
+  if (isExpoGo()) {
+    return null;
+  }
+
+  if (!notificationsModulePromise) {
+    notificationsModulePromise = (async () => {
+      try {
+        const Notifications = await import('expo-notifications');
+
+        if (!handlerConfigured) {
+          Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldShowBanner: true,
+              shouldShowList: true,
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+            }),
+          });
+          handlerConfigured = true;
+        }
+
+        return Notifications;
+      } catch {
+        return null;
+      }
+    })();
+  }
+
+  return notificationsModulePromise;
+}
 
 /** Просит разрешение и возвращает нативный push-токен платформы, или
  * null — если разрешение не дали, устройство не поддерживает push
- * (симулятор/эмулятор), или Firebase ещё не настроен в проекте (см.
- * комментарий выше файла). Ни один из этих случаев не должен ронять
- * остальной вход в приложение — курьер просто не будет получать push,
- * WS в моменты работы с приложением по-прежнему работает.
- */
+ * (симулятор/эмулятор/Expo Go), или Firebase ещё не настроен в проекте
+ * (google-services.json/GoogleService-Info.plist). Ни один из этих
+ * случаев не должен ронять остальной вход в приложение — курьер просто
+ * не будет получать push, WS в моменты работы с приложением
+ * по-прежнему работает. */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) {
+    return null;
+  }
+
+  const Notifications = await loadNotificationsModule();
+  if (!Notifications) {
     return null;
   }
 
@@ -63,14 +79,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     const token = await Notifications.getDevicePushTokenAsync();
     return token.data;
   } catch {
-    // Не настроен Firebase на этой платформе — см. комментарий выше файла.
     return null;
   }
 }
 
 /** Запрашивает разрешение, получает токен и регистрирует устройство на
- * бэке — вызывать сразу после успешного входа (см. флоу-документ).
- * Тихо ничего не делает при любой неудаче — push не блокирует вход. */
+ * бэке — вызывать сразу после успешного входа (см. authApi.ts) и на
+ * восстановлении сессии (см. useAuthBootstrap.ts). Тихо ничего не
+ * делает при любой неудаче — push не блокирует вход. */
 export async function setupPushNotifications(): Promise<void> {
   const token = await registerForPushNotificationsAsync();
   if (!token) {
@@ -78,9 +94,13 @@ export async function setupPushNotifications(): Promise<void> {
   }
 
   const platform = getAppPlatform();
+
   try {
-    // Прямой вызов через store, не хук — этот сервис не React-компонент,
-    // тот же приём, что и locationTracker.ts.
+    const [{ store }, { devicesApi }] = await Promise.all([
+      import('@/store/store'),
+      import('@/features/devices/api/devicesApi'),
+    ]);
+
     await store
       .dispatch(
         devicesApi.endpoints.registerDevice.initiate({
@@ -91,25 +111,42 @@ export async function setupPushNotifications(): Promise<void> {
       )
       .unwrap();
   } catch {
-    // Регистрация устройства — best-effort, как и на бэке (см.
-    // register_device: не критична для остального входа).
+    // Регистрация устройства — best-effort (см. register_device на бэке).
   }
 }
 
-/** Подписка на тап по уведомлению — вызывать один раз, например в
- * корневом layout. Возвращает функцию отписки. onOrderSignal вызывается
- * без данных заказа (см. заголовок файла) — обработчик должен просто
- * перепроверить GET /active, как и по WS-событию. */
+/** Подписка на тап по уведомлению — безопасна в Expo Go (no-op).
+ * onOrderSignal вызывается без данных заказа — обработчик должен
+ * просто перепроверить GET /active, как и по WS-событию. */
 export function subscribeToNotificationTaps(onOrderSignal: () => void): () => void {
-  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    const type = response.notification.request.content.data?.type;
-    if (type === 'delivery.assigned' || type === 'bundle.assigned') {
-      onOrderSignal();
+  let removeListener: (() => void) | null = null;
+  let cancelled = false;
+
+  void (async () => {
+    const Notifications = await loadNotificationsModule();
+    if (!Notifications || cancelled) {
+      return;
     }
-  });
-  return () => subscription.remove();
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const type = response.notification.request.content.data?.type;
+      if (type === 'delivery.assigned' || type === 'bundle.assigned') {
+        onOrderSignal();
+      }
+    });
+
+    if (cancelled) {
+      subscription.remove();
+      return;
+    }
+
+    removeListener = () => subscription.remove();
+  })();
+
+  return () => {
+    cancelled = true;
+    removeListener?.();
+  };
 }
 
-// Реэкспорт для мест, где удобнее хук, а не прямой dispatch (например,
-// экран настроек, где полезно показать состояние мутации).
-export { useRegisterDeviceMutation };
+export { useRegisterDeviceMutation } from '@/features/devices/api/devicesApi';
