@@ -3,22 +3,22 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { COLORS } from '@/constants/theme';
 
-import type { HistorySummary } from '../types';
-
 type DeliveryStatsCardProps = {
-  summary: HistorySummary;
+  title: string;
+  value: number;
+  subtitle: string;
 };
 
-export function DeliveryStatsCard({ summary }: DeliveryStatsCardProps) {
+export function DeliveryStatsCard({ title, value, subtitle }: DeliveryStatsCardProps) {
   return (
     <View style={styles.card}>
       <View>
-        <Text style={styles.title}>{summary.title}</Text>
-        <Text style={styles.count}>{summary.deliveriesCount}</Text>
-        <Text style={styles.portions}>{summary.portionsLabel}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.count}>{value}</Text>
+        <Text style={styles.portions}>{subtitle}</Text>
       </View>
       <View style={styles.iconWrap}>
-        <Ionicons name="bicycle-outline" size={20} color={COLORS.primary} />
+        <Ionicons name="restaurant-outline" size={20} color={COLORS.primary} />
       </View>
     </View>
   );

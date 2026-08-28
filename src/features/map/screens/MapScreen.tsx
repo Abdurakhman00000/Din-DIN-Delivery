@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useMarkDeliveredMutation,
   useMarkPickedUpMutation,
+  useReportProblemMutation,
 } from '@/features/deliveries/api/deliveriesApi';
-import type { ActiveDelivery, ChecklistItemIn } from '@/features/deliveries/types';
+import type { ActiveDelivery, ChecklistItemIn, ProblemType } from '@/features/deliveries/types';
 import { useCourierSession } from '@/features/shifts';
 import { setActiveDeliveryForTracking } from '@/services/location/locationTracker';
 
@@ -14,20 +15,22 @@ import { ActiveTripCard } from '../components/ActiveTripCard';
 import { ChecklistSheet } from '../components/ChecklistSheet';
 import { CourierMapView, type CourierMapViewRef } from '../components/CourierMapView';
 import { CourierMarker } from '../components/CourierMarker';
-import { DeliveredToast } from '../components/DeliveredToast';
 import { GoOnlineButton } from '../components/GoOnlineButton';
 import { MapHeader } from '../components/MapHeader';
 import { MapSearchSheet } from '../components/MapSearchSheet';
 import { MapLeftControls, MapRightControls } from '../components/MapSideControls';
 import { OnlineToast } from '../components/OnlineToast';
 import { OrderSwitcher } from '../components/OrderSwitcher';
+import { ProblemSheet } from '../components/ProblemSheet';
+import { ToastBanner } from '../components/ToastBanner';
 import { useCourierPosition } from '../hooks/useCourierPosition';
 
 export function MapScreen() {
   const mapRef = useRef<CourierMapViewRef>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
-  const [deliveredToast, setDeliveredToast] = useState<{ number: string } | null>(null);
+  const [problemOpen, setProblemOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string } | null>(null);
 
   const session = useCourierSession();
   const { state } = session;
@@ -49,6 +52,7 @@ export function MapScreen() {
 
   const [markPickedUp, pickedUpState] = useMarkPickedUpMutation();
   const [markDelivered, deliveredState] = useMarkDeliveredMutation();
+  const [reportProblem, problemState] = useReportProblemMutation();
 
   const courierPosition = useCourierPosition(state === 'to_pickup' || state === 'to_customer');
 
@@ -130,6 +134,29 @@ export function MapScreen() {
     }
   }
 
+  async function handleGoOffline() {
+    try {
+      await session.goOffline();
+    } catch {
+      // 409, если заказ назначили за секунду до тапа (см. goOffline в
+      // useCourierSession) — просто остаёмся на смене, GET /active сам
+      // покажет новый заказ через страховочный поллинг/WS.
+    }
+  }
+
+  async function handleIdlePress() {
+    if (state === 'waiting') {
+      await handleGoOffline();
+    } else {
+      await handleGoOnline();
+    }
+  }
+
+  function showToast(message: string) {
+    setToast({ message });
+    setTimeout(() => setToast(null), 3000);
+  }
+
   async function handleDeliver() {
     if (!selected) {
       return;
@@ -137,16 +164,48 @@ export function MapScreen() {
     const number = selected.display_number;
     try {
       await markDelivered({ deliveryId: selected.id }).unwrap();
-      setDeliveredToast({ number });
-      setTimeout(() => setDeliveredToast(null), 3000);
+      showToast(`Заказ №${number} доставлен ✓`);
     } catch {
       // См. комментарий в handleConfirmChecklist — ошибка видна через
       // deliveredState.error, кнопка просто останется активной.
     }
   }
 
+  async function handleReportProblem(type: ProblemType, comment: string) {
+    if (!selected) {
+      return;
+    }
+    try {
+      await reportProblem({ deliveryId: selected.id, type, comment: comment || undefined }).unwrap();
+      setProblemOpen(false);
+      // leave_at_reception не закрывает заказ (см. ProblemSheet) — курьер
+      // продолжает как обычно и сам жмёт "Доставил"; остальные типы
+      // заказ закрывают, он пропадёт из GET /active.
+      showToast(
+        type === 'leave_at_reception'
+          ? 'Отмечено — доставьте как обычно'
+          : 'Сообщено, заказ передан диспетчеру',
+      );
+    } catch {
+      // Ошибка видна через problemState.error, шторка не закрывается —
+      // курьер может поправить и повторить.
+    }
+  }
+
+  function openChecklist() {
+    setProblemOpen(false);
+    setChecklistOpen(true);
+  }
+
+  function openProblem() {
+    setChecklistOpen(false);
+    setProblemOpen(true);
+  }
+
   const showIdleControls = state === 'offline' || state === 'waiting';
   const showSwitcher = phaseDeliveries.length > 1;
+  const idleLabel = state === 'waiting' ? 'Закончить смену' : 'На линию';
+  const idleDisabled = session.isStartingShift || session.isEndingShift;
 
   return (
     <View style={styles.container}>
@@ -163,7 +222,12 @@ export function MapScreen() {
                 onSelect={setSelectedId}
               />
             ) : null}
-            <ActiveTripCard delivery={selected} phase={state} courierPosition={courierPosition} />
+            <ActiveTripCard
+              delivery={selected}
+              phase={state}
+              courierPosition={courierPosition}
+              onProblemPress={openProblem}
+            />
           </View>
         ) : (
           <MapHeader />
@@ -185,18 +249,14 @@ export function MapScreen() {
             />
           </View>
           <View style={styles.bottomOverlay}>
-            <GoOnlineButton
-              label={state === 'waiting' ? 'На линии' : 'На линию'}
-              disabled={state === 'waiting' || session.isStartingShift}
-              onPress={handleGoOnline}
-            />
+            <GoOnlineButton label={idleLabel} disabled={idleDisabled} onPress={handleIdlePress} />
           </View>
         </>
       ) : null}
 
       {state === 'to_pickup' && selected ? (
         <View style={styles.bottomOverlay}>
-          <GoOnlineButton label="Забрал" onPress={() => setChecklistOpen(true)} />
+          <GoOnlineButton label="Забрал" onPress={openChecklist} />
         </View>
       ) : null}
 
@@ -220,9 +280,16 @@ export function MapScreen() {
         />
       ) : null}
 
-      {deliveredToast ? (
-        <DeliveredToast visible={!!deliveredToast} displayNumber={deliveredToast.number} />
+      {problemOpen && selected ? (
+        <ProblemSheet
+          displayNumber={selected.display_number}
+          loading={problemState.isLoading}
+          onConfirm={handleReportProblem}
+          onCancel={() => setProblemOpen(false)}
+        />
       ) : null}
+
+      {toast ? <ToastBanner visible={!!toast} message={toast.message} /> : null}
 
       <MapSearchSheet visible={searchOpen} onClose={() => setSearchOpen(false)} />
     </View>

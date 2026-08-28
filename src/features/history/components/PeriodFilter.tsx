@@ -4,10 +4,11 @@ import { COLORS } from '@/constants/theme';
 
 import type { HistoryPeriod } from '../types';
 
+// Только то, что реально считает бэк (GET /api/courier/stats) — без
+// "месяца", для него там нет данных (см. history/types/index.ts).
 const PERIODS: { id: HistoryPeriod; label: string }[] = [
   { id: 'today', label: 'Сегодня' },
   { id: 'week', label: 'Неделя' },
-  { id: 'month', label: 'Месяц' },
 ];
 
 type PeriodFilterProps = {

@@ -145,7 +145,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmDisabled: {
-    backgroundColor: COLORS.gray100,
+    // gray400, не gray100 — белый текст на gray100 почти не читается
+    backgroundColor: COLORS.gray400,
   },
   confirmText: {
     color: COLORS.white,

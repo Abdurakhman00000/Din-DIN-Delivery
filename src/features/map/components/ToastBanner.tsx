@@ -1,8 +1,9 @@
-// Заменяет старый CompletedOrderSheet — там был шаг "ожидание оплаты",
-// которого на бэке нет и не будет (см. обсуждение: бэкенд принципиально
-// не хранит и не отдаёт денежные суммы, значит и не может знать оплату).
-// POST /delivered — финал сразу, без промежуточного статуса. Это просто
-// короткое подтверждение, само исчезает.
+// Общий короткий тост снизу экрана — раньше был только под "доставлен"
+// (DeliveredToast), теперь переиспользуется и для "проблема отправлена"
+// (см. MapScreen.tsx). Сама логика показа/скрытия та же: заменяет
+// старый CompletedOrderSheet — там был шаг "ожидание оплаты", которого
+// на бэке нет и не будет (бэкенд принципиально не хранит и не отдаёт
+// денежные суммы, значит и не может знать оплату).
 import { useEffect } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -10,12 +11,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORS, SHADOW } from '@/constants/theme';
 
-type DeliveredToastProps = {
+type ToastBannerProps = {
   visible: boolean;
-  displayNumber: string;
+  message: string;
 };
 
-export function DeliveredToast({ visible, displayNumber }: DeliveredToastProps) {
+export function ToastBanner({ visible, message }: ToastBannerProps) {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(80);
   const opacity = useSharedValue(0);
@@ -35,7 +36,7 @@ export function DeliveredToast({ visible, displayNumber }: DeliveredToastProps) 
       pointerEvents="none"
       style={[styles.toast, SHADOW.soft, { bottom: insets.bottom + 24 }, style]}
     >
-      <Text style={styles.text}>Заказ №{displayNumber} доставлен ✓</Text>
+      <Text style={styles.text}>{message}</Text>
     </Animated.View>
   );
 }

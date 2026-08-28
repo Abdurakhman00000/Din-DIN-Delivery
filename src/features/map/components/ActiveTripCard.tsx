@@ -14,9 +14,15 @@ type ActiveTripCardProps = {
   delivery: ActiveDelivery;
   phase: TripPhase;
   courierPosition: MapCoordinate | null;
+  onProblemPress: () => void;
 };
 
-export function ActiveTripCard({ delivery, phase, courierPosition }: ActiveTripCardProps) {
+export function ActiveTripCard({
+  delivery,
+  phase,
+  courierPosition,
+  onProblemPress,
+}: ActiveTripCardProps) {
   const isToPickup = phase === 'to_pickup';
 
   const address = isToPickup
@@ -79,6 +85,10 @@ export function ActiveTripCard({ delivery, phase, courierPosition }: ActiveTripC
           <Text style={[styles.actionText, !canCall && styles.actionTextDisabled]}>
             Позвонить
           </Text>
+        </Pressable>
+        <Pressable style={styles.action} onPress={onProblemPress}>
+          <Ionicons name="alert-circle-outline" size={16} color={COLORS.gray900} />
+          <Text style={styles.actionText}>Проблема</Text>
         </Pressable>
       </View>
     </View>

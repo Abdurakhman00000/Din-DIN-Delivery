@@ -12,6 +12,8 @@ import '@/features/deliveries/api/deliveriesApi';
 import '@/features/shifts/api/shiftsApi';
 import '@/features/locations/api/locationsApi';
 import '@/features/devices/api/devicesApi';
+import '@/features/appVersion/api/appVersionApi';
+import '@/features/stats/api/statsApi';
 
 export const store = configureStore({
   reducer: {

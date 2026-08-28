@@ -21,13 +21,12 @@
 // и push просто не будет доходить — то же самое поведение, что и
 // LoggingPushSender на бэке до того, как туда завели Firebase.
 
-import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 
 import { devicesApi, useRegisterDeviceMutation } from '@/features/devices/api/devicesApi';
 import { store } from '@/store/store';
+import { getAppPlatform, getAppVersion } from '@/utils/appVersion';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -37,10 +36,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
-
-function getAppVersion(): string {
-  return Constants.expoConfig?.version ?? '0.0.0';
-}
 
 /** Просит разрешение и возвращает нативный push-токен платформы, или
  * null — если разрешение не дали, устройство не поддерживает push
@@ -82,7 +77,7 @@ export async function setupPushNotifications(): Promise<void> {
     return;
   }
 
-  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+  const platform = getAppPlatform();
   try {
     // Прямой вызов через store, не хук — этот сервис не React-компонент,
     // тот же приём, что и locationTracker.ts.

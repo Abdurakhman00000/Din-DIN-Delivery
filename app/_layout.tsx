@@ -7,11 +7,23 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { UpdateRequiredScreen, useAppVersionGate } from '@/features/appVersion';
 import { useAuthBootstrap } from '@/features/auth';
 import { store } from '@/store/store';
 
 function RootNavigator() {
+  const versionGate = useAppVersionGate();
   useAuthBootstrap();
+
+  // Самая первая проверка при старте, ещё до входа — см. useAppVersionGate.
+  if (versionGate.blocked) {
+    return (
+      <UpdateRequiredScreen
+        minSupported={versionGate.minSupported}
+        updateUrl={versionGate.updateUrl}
+      />
+    );
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

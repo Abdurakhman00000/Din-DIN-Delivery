@@ -1,25 +1,9 @@
-// Типы для раздела «История»
+// Типы для раздела «История». Ровно то, что реально отдаёт бэк
+// (GET /api/courier/stats — src/modules/deliveries/schemas.py):
+// план/факт сегодня, сумма за неделю, история по дням. "Месяц" и
+// список отдельных прошлых заказов (адрес/время) убраны — на бэке для
+// них нет данных (courier_stats_history_days по умолчанию 14 дней,
+// эндпоинта со списком заказов вообще нет), показывать их означало бы
+// либо мок, либо неполные/вводящие в заблуждение цифры.
 
-export type HistoryPeriod = 'today' | 'week' | 'month';
-
-export type HistoryOrderStatus = 'delivered';
-
-export type HistoryOrder = {
-  id: string;
-  address: string;
-  deliveredAtLabel: string;
-  portionsLabel: string;
-  status: HistoryOrderStatus;
-};
-
-export type HistorySummary = {
-  title: string;
-  deliveriesCount: number;
-  portionsLabel: string;
-};
-
-export type HistoryResponse = {
-  period: HistoryPeriod;
-  summary: HistorySummary;
-  orders: HistoryOrder[];
-};
+export type HistoryPeriod = 'today' | 'week';
