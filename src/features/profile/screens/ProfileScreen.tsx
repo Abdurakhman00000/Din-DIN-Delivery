@@ -4,7 +4,6 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/ui/AppHeader';
-import { MOCK_AVATAR_URL } from '@/constants/app';
 import { ROUTES } from '@/constants/routes';
 import { COLORS } from '@/constants/theme';
 import { useLogoutMutation } from '@/features/auth/api/authApi';
@@ -35,7 +34,7 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <AppHeader avatarUrl={MOCK_AVATAR_URL} />
+      <AppHeader />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

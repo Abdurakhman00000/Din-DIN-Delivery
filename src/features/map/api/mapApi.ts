@@ -3,5 +3,6 @@
 import { baseApi } from '@/services/api/baseApi';
 
 export const mapApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: () => ({}),
 });

@@ -2,16 +2,17 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppLogo } from '@/components/ui/AppLogo';
 import { HeaderUserActions } from '@/components/ui/HeaderUserActions';
-import type { AvatarSource } from '@/constants/app';
 import { COLORS, SHADOW } from '@/constants/theme';
+import { useCourierAvatar } from '@/features/profile/hooks/useCourierAvatar';
 
 type MapHeaderProps = {
-  avatarUrl: AvatarSource;
   onNotificationsPress?: () => void;
   onAvatarPress?: () => void;
 };
 
-export function MapHeader({ avatarUrl, onNotificationsPress, onAvatarPress }: MapHeaderProps) {
+export function MapHeader({ onNotificationsPress, onAvatarPress }: MapHeaderProps) {
+  const { fullName, photoUrl } = useCourierAvatar();
+
   return (
     <View style={styles.container}>
       <View style={[styles.logoBlock, SHADOW.soft]}>
@@ -19,7 +20,8 @@ export function MapHeader({ avatarUrl, onNotificationsPress, onAvatarPress }: Ma
       </View>
 
       <HeaderUserActions
-        avatarUrl={avatarUrl}
+        fullName={fullName}
+        photoUrl={photoUrl}
         onNotificationsPress={onNotificationsPress}
         onAvatarPress={onAvatarPress}
         elevated

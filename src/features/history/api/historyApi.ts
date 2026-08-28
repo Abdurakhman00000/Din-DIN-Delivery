@@ -3,5 +3,6 @@
 import { baseApi } from '@/services/api/baseApi';
 
 export const historyApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: () => ({}),
 });

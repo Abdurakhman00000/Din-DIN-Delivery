@@ -1,19 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { toAvatarSource, type AvatarSource } from '@/constants/app';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { COLORS } from '@/constants/theme';
 
 type HeaderUserActionsProps = {
-  avatarUrl: AvatarSource;
+  fullName?: string | null;
+  photoUrl?: string | null;
   onNotificationsPress?: () => void;
   onAvatarPress?: () => void;
   elevated?: boolean;
 };
 
 export function HeaderUserActions({
-  avatarUrl,
+  fullName,
+  photoUrl,
   onNotificationsPress,
   onAvatarPress,
   elevated = false,
@@ -25,7 +26,7 @@ export function HeaderUserActions({
         style={[styles.whiteCircle, elevated && styles.elevated]}
         accessibilityLabel="Профиль"
       >
-        <Image source={toAvatarSource(avatarUrl)} style={styles.avatar} contentFit="cover" />
+        <UserAvatar fullName={fullName ?? ''} photoUrl={photoUrl} size={36} />
       </Pressable>
       <Pressable
         onPress={onNotificationsPress}
@@ -61,11 +62,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.gray100,
   },
 });

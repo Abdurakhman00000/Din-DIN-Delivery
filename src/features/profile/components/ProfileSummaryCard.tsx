@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { COLORS } from '@/constants/theme';
 
 import type { CourierProfile } from '../types';
-import { buildProfileInfoRows, getProfileInitials, getStatusLabel, getVehicleLabel } from '../utils/profileFormatters';
+import { buildProfileInfoRows, getStatusLabel, getVehicleLabel } from '../utils/profileFormatters';
 
 type ProfileSummaryCardProps = {
   profile: CourierProfile;
@@ -12,15 +13,18 @@ type ProfileSummaryCardProps = {
 
 export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
   const infoRows = buildProfileInfoRows(profile);
-  const initials = getProfileInitials(profile.full_name);
 
   return (
     <View style={styles.card}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initials}</Text>
-      </View>
+      <UserAvatar
+        fullName={profile.full_name ?? ''}
+        photoUrl={profile.avatar_url}
+        size={96}
+        fontSize={28}
+        borderWidth={2}
+      />
 
-      <Text style={styles.name}>{profile.full_name}</Text>
+      <Text style={styles.name}>{profile.full_name ?? 'Курьер'}</Text>
 
       <View style={styles.badges}>
         <View style={styles.badge}>
@@ -59,22 +63,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 16,
     gap: 12,
-  },
-  avatar: {
-    alignSelf: 'center',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#ECFDF3',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.primary,
   },
   name: {
     fontSize: 22,
@@ -103,6 +92,7 @@ const styles = StyleSheet.create({
     color: COLORS.gray600,
   },
   infoList: {
+    alignSelf: 'stretch',
     marginTop: 4,
     borderWidth: 1,
     borderColor: COLORS.border,

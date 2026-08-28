@@ -8,6 +8,7 @@ export type CourierProfile = {
   id: string;
   phone: string;
   full_name: string;
+  avatar_url?: string | null;
   pickup_point_id: string;
   vehicle: CourierVehicle;
   status: CourierWorkStatus;

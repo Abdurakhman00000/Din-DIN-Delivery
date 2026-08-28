@@ -2,16 +2,17 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppLogo } from '@/components/ui/AppLogo';
 import { HeaderUserActions } from '@/components/ui/HeaderUserActions';
-import type { AvatarSource } from '@/constants/app';
 import { COLORS } from '@/constants/theme';
+import { useCourierAvatar } from '@/features/profile/hooks/useCourierAvatar';
 
 type AppHeaderProps = {
-  avatarUrl: AvatarSource;
   onNotificationsPress?: () => void;
   onAvatarPress?: () => void;
 };
 
-export function AppHeader({ avatarUrl, onNotificationsPress, onAvatarPress }: AppHeaderProps) {
+export function AppHeader({ onNotificationsPress, onAvatarPress }: AppHeaderProps) {
+  const { fullName, photoUrl } = useCourierAvatar();
+
   return (
     <View style={styles.container}>
       <View style={styles.brand}>
@@ -20,7 +21,8 @@ export function AppHeader({ avatarUrl, onNotificationsPress, onAvatarPress }: Ap
       </View>
 
       <HeaderUserActions
-        avatarUrl={avatarUrl}
+        fullName={fullName}
+        photoUrl={photoUrl}
         onNotificationsPress={onNotificationsPress}
         onAvatarPress={onAvatarPress}
       />

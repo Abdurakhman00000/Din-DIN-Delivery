@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MOCK_AVATAR_URL } from '@/constants/app';
 import { COLORS } from '@/constants/theme';
 
 import { DeliveryStatsCard } from '../components/DeliveryStatsCard';
@@ -19,7 +18,7 @@ export function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <HistoryHeader avatarUrl={MOCK_AVATAR_URL} />
+      <HistoryHeader />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

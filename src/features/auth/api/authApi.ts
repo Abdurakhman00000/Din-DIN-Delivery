@@ -6,6 +6,7 @@ import { clearTokens, getRefreshToken, saveTokens } from '@/services/api/tokens'
 import type { AuthTokenPair, LoginRequest, LogoutRequest, RefreshRequest } from '../types';
 
 export const authApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     login: builder.mutation<AuthTokenPair, LoginRequest>({
       query: (body) => ({
@@ -29,7 +30,7 @@ export const authApi = baseApi.injectEndpoints({
         await saveTokens(data.access_token, data.refresh_token);
       },
     }),
-    logout: builder.mutation<void, void>({
+    logout: builder.mutation<null, void>({
       queryFn: async (_arg, _api, _extraOptions, baseQuery) => {
         const refreshToken = await getRefreshToken();
 
@@ -42,7 +43,7 @@ export const authApi = baseApi.injectEndpoints({
         }
 
         await clearTokens();
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ['Courier'],
     }),

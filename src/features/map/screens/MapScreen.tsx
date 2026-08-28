@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MOCK_AVATAR_URL } from '@/constants/app';
-
 import { ActiveTripCard } from '../components/ActiveTripCard';
 import { CompletedOrderSheet } from '../components/CompletedOrderSheet';
 import { CourierMapView, type CourierMapViewRef } from '../components/CourierMapView';
@@ -65,7 +63,7 @@ export function MapScreen() {
             paymentStatus={shift.paymentStatus}
           />
         ) : (
-          <MapHeader avatarUrl={MOCK_AVATAR_URL} />
+          <MapHeader />
         )}
       </SafeAreaView>
 
