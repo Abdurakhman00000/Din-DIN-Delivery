@@ -50,7 +50,16 @@ export async function refreshAccessToken(): Promise<boolean> {
       });
 
       if (!response.ok) {
-        await clearTokens();
+        // Только 401 значит "бэк однозначно отклонил именно этот
+        // refresh_token" (просрочен/уже использован/отозван) — только
+        // тогда есть смысл его стирать. Любой другой код (5xx — бэк
+        // упал/перегружен, 429 и т.п.) — токен вполне может быть ещё
+        // рабочим, просто сейчас не получилось; стирать его в этом
+        // случае — реальный баг: курьер молча "разлогинивается" из-за
+        // временной проблемы сети/бэка, а не потому что сессия истекла.
+        if (response.status === 401) {
+          await clearTokens();
+        }
         return false;
       }
 
@@ -58,7 +67,9 @@ export async function refreshAccessToken(): Promise<boolean> {
       await saveTokens(data.access_token, data.refresh_token);
       return true;
     } catch {
-      await clearTokens();
+      // Сетевая ошибка (нет связи, таймаут) — тем более не повод стирать
+      // токен, который может быть абсолютно валиден: просто повторим
+      // попытку в следующий раз, когда связь появится.
       return false;
     } finally {
       refreshPromise = null;
