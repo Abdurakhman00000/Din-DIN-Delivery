@@ -7,6 +7,7 @@ import type { DeliveryItem } from '@/features/deliveries/types';
 
 type ChecklistSheetProps = {
   items: DeliveryItem[];
+  displayNumber: string;
   loading: boolean;
   onConfirm: (checked: Record<string, boolean>) => void;
   onCancel: () => void;
@@ -17,15 +18,25 @@ type ChecklistSheetProps = {
  * — иначе 422 (см. флоу-документ, "не хватает товара, забирать нельзя").
  * Поэтому кнопка подтверждения недоступна, пока не отмечено всё —
  * не даём отправить заведомо невалидный запрос.
+ *
+ * `displayNumber` в заголовке — не украшение: при бандле из двух
+ * заказов курьер сверяет чек-лист для каждого отдельно (см.
+ * MapScreen.tsx), и должен точно видеть, какой из двух сейчас перед ним.
  */
-export function ChecklistSheet({ items, loading, onConfirm, onCancel }: ChecklistSheetProps) {
+export function ChecklistSheet({
+  items,
+  displayNumber,
+  loading,
+  onConfirm,
+  onCancel,
+}: ChecklistSheetProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const allChecked = items.length > 0 && items.every((item) => checked[item.id]);
 
   return (
     <View style={styles.sheet}>
       <View style={styles.handle} />
-      <Text style={styles.title}>Сверьте заказ</Text>
+      <Text style={styles.title}>Сверьте заказ №{displayNumber}</Text>
       <Text style={styles.subtitle}>Отметьте всё, что забираете — иначе заказ не отметится</Text>
 
       <View style={styles.list}>

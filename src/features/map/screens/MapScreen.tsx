@@ -6,8 +6,9 @@ import {
   useMarkDeliveredMutation,
   useMarkPickedUpMutation,
 } from '@/features/deliveries/api/deliveriesApi';
-import type { ChecklistItemIn } from '@/features/deliveries/types';
+import type { ActiveDelivery, ChecklistItemIn } from '@/features/deliveries/types';
 import { useCourierSession } from '@/features/shifts';
+import { setActiveDeliveryForTracking } from '@/services/location/locationTracker';
 
 import { ActiveTripCard } from '../components/ActiveTripCard';
 import { ChecklistSheet } from '../components/ChecklistSheet';
@@ -19,6 +20,7 @@ import { MapHeader } from '../components/MapHeader';
 import { MapSearchSheet } from '../components/MapSearchSheet';
 import { MapLeftControls, MapRightControls } from '../components/MapSideControls';
 import { OnlineToast } from '../components/OnlineToast';
+import { OrderSwitcher } from '../components/OrderSwitcher';
 import { useCourierPosition } from '../hooks/useCourierPosition';
 
 export function MapScreen() {
@@ -28,7 +30,22 @@ export function MapScreen() {
   const [deliveredToast, setDeliveredToast] = useState<{ number: string } | null>(null);
 
   const session = useCourierSession();
-  const { state, primaryDelivery } = session;
+  const { state } = session;
+
+  // До двух активных доставок разом (bundle — см. useCourierSession).
+  // "Фокус" — какую из них сейчас показываем/ведём — локальный выбор
+  // экрана, не часть машины состояний сессии: сессия знает только
+  // "какие заказы вообще активны сейчас", а какую карточку смотрит
+  // курьер в моменте — решает сам этот экран.
+  const phaseDeliveries: ActiveDelivery[] =
+    state === 'to_pickup'
+      ? session.pickupDeliveries
+      : state === 'to_customer'
+        ? session.customerDeliveries
+        : [];
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = phaseDeliveries.find((d) => d.id === selectedId) ?? phaseDeliveries[0] ?? null;
 
   const [markPickedUp, pickedUpState] = useMarkPickedUpMutation();
   const [markDelivered, deliveredState] = useMarkDeliveredMutation();
@@ -41,19 +58,26 @@ export function MapScreen() {
   // производное состояние сессии.
   const [justWentOnline, setJustWentOnline] = useState(false);
 
+  // Какая из активных доставок помечает пачки геопинга (см.
+  // locationTracker.ts) — та, что сейчас в фокусе экрана. Просто
+  // best-effort метка для аудита/карты, не платёжный лог — не страшно,
+  // если на секунду отстаёт от реального переключения.
   useEffect(() => {
-    if (!primaryDelivery || !courierPosition) {
+    setActiveDeliveryForTracking(selected?.id ?? null);
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected || !courierPosition) {
       mapRef.current?.clearRoute();
       return;
     }
 
     if (state === 'to_pickup') {
       const destination =
-        primaryDelivery.pickup_point_latitude != null &&
-        primaryDelivery.pickup_point_longitude != null
+        selected.pickup_point_latitude != null && selected.pickup_point_longitude != null
           ? {
-              latitude: primaryDelivery.pickup_point_latitude,
-              longitude: primaryDelivery.pickup_point_longitude,
+              latitude: selected.pickup_point_latitude,
+              longitude: selected.pickup_point_longitude,
             }
           : null;
       if (destination) {
@@ -67,25 +91,25 @@ export function MapScreen() {
     if (state === 'to_customer') {
       mapRef.current?.showRoute(
         courierPosition,
-        { latitude: primaryDelivery.customer_latitude, longitude: primaryDelivery.customer_longitude },
+        { latitude: selected.customer_latitude, longitude: selected.customer_longitude },
         'B',
       );
       return;
     }
 
     mapRef.current?.clearRoute();
-  }, [state, primaryDelivery, courierPosition]);
+  }, [state, selected, courierPosition]);
 
   async function handleConfirmChecklist(checked: Record<string, boolean>) {
-    if (!primaryDelivery) {
+    if (!selected) {
       return;
     }
-    const checklist: ChecklistItemIn[] = primaryDelivery.items.map((item) => ({
+    const checklist: ChecklistItemIn[] = selected.items.map((item) => ({
       item_id: item.id,
       is_checked: !!checked[item.id],
     }));
     try {
-      await markPickedUp({ deliveryId: primaryDelivery.id, checklist }).unwrap();
+      await markPickedUp({ deliveryId: selected.id, checklist }).unwrap();
       setChecklistOpen(false);
     } catch {
       // Ошибка (422 — неполный чек-лист/не совпал состав, 409 — заказ
@@ -107,12 +131,12 @@ export function MapScreen() {
   }
 
   async function handleDeliver() {
-    if (!primaryDelivery) {
+    if (!selected) {
       return;
     }
-    const number = primaryDelivery.display_number;
+    const number = selected.display_number;
     try {
-      await markDelivered({ deliveryId: primaryDelivery.id }).unwrap();
+      await markDelivered({ deliveryId: selected.id }).unwrap();
       setDeliveredToast({ number });
       setTimeout(() => setDeliveredToast(null), 3000);
     } catch {
@@ -122,6 +146,7 @@ export function MapScreen() {
   }
 
   const showIdleControls = state === 'offline' || state === 'waiting';
+  const showSwitcher = phaseDeliveries.length > 1;
 
   return (
     <View style={styles.container}>
@@ -129,12 +154,17 @@ export function MapScreen() {
       {state === 'to_pickup' || state === 'to_customer' ? null : <CourierMarker />}
 
       <SafeAreaView style={styles.topOverlay} edges={['top']}>
-        {primaryDelivery && (state === 'to_pickup' || state === 'to_customer') ? (
-          <ActiveTripCard
-            delivery={primaryDelivery}
-            phase={state}
-            courierPosition={courierPosition}
-          />
+        {selected && (state === 'to_pickup' || state === 'to_customer') ? (
+          <View style={styles.tripStack}>
+            {showSwitcher ? (
+              <OrderSwitcher
+                items={phaseDeliveries}
+                selectedId={selected.id}
+                onSelect={setSelectedId}
+              />
+            ) : null}
+            <ActiveTripCard delivery={selected} phase={state} courierPosition={courierPosition} />
+          </View>
         ) : (
           <MapHeader />
         )}
@@ -164,13 +194,13 @@ export function MapScreen() {
         </>
       ) : null}
 
-      {state === 'to_pickup' && primaryDelivery ? (
+      {state === 'to_pickup' && selected ? (
         <View style={styles.bottomOverlay}>
           <GoOnlineButton label="Забрал" onPress={() => setChecklistOpen(true)} />
         </View>
       ) : null}
 
-      {state === 'to_customer' && primaryDelivery ? (
+      {state === 'to_customer' && selected ? (
         <View style={styles.bottomOverlay}>
           <GoOnlineButton
             label={deliveredState.isLoading ? 'Отправляем…' : 'Доставил'}
@@ -180,9 +210,10 @@ export function MapScreen() {
         </View>
       ) : null}
 
-      {checklistOpen && primaryDelivery ? (
+      {checklistOpen && selected ? (
         <ChecklistSheet
-          items={primaryDelivery.items}
+          items={selected.items}
+          displayNumber={selected.display_number}
           loading={pickedUpState.isLoading}
           onConfirm={handleConfirmChecklist}
           onCancel={() => setChecklistOpen(false)}
@@ -211,6 +242,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     zIndex: 10,
+  },
+  tripStack: {
+    gap: 8,
   },
   leftControls: {
     position: 'absolute',

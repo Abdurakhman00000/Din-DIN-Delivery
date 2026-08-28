@@ -9,8 +9,15 @@
 // назначен, курьеру нечего принимать/отклонять:
 //   offline    — не на смене
 //   waiting    — на смене, GET /active пусто
-//   to_pickup  — активная доставка в статусе en_route_to_pickup
-//   to_customer — активная доставка в статусе en_route_to_customer
+//   to_pickup  — есть хоть одна доставка в статусе en_route_to_pickup
+//   to_customer — все доставки уже забраны, хоть одна en_route_to_customer
+//
+// До двух доставок одновременно (bundle, max_active_deliveries — см.
+// флоу-документ бэка). Пока хоть одна из них ещё не забрана с точки —
+// вся сессия остаётся в фазе to_pickup: бэк не требует забирать бандл
+// разом (`/picked-up` дергается отдельно на каждый id), но по смыслу
+// курьер должен забрать оба заказа с одной точки за один заход, а не
+// уехать с одним, забыв второй — это решает интерфейс, не бэк.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
@@ -20,11 +27,7 @@ import type { ActiveDelivery, ChecklistItemIn, ProblemType } from '@/features/de
 import { useGetCourierMeQuery } from '@/features/profile/api/profileApi';
 import { useEndShiftMutation, useStartShiftMutation } from '@/features/shifts/api/shiftsApi';
 import { getAccessToken } from '@/services/api/tokens';
-import {
-  setActiveDeliveryForTracking,
-  startLocationTracking,
-  stopLocationTracking,
-} from '@/services/location/locationTracker';
+import { startLocationTracking, stopLocationTracking } from '@/services/location/locationTracker';
 import { subscribeToNotificationTaps } from '@/services/notifications/pushNotifications';
 import { CourierSocket } from '@/services/ws/courierSocket';
 
@@ -32,23 +35,29 @@ export type CourierSessionState = 'offline' | 'waiting' | 'to_pickup' | 'to_cust
 
 const POLL_INTERVAL_MS = 20_000; // страховка на случай пропущенного WS/push-сигнала
 
-function computeState(isOnline: boolean, delivery: ActiveDelivery | null): CourierSessionState {
+function computeState(isOnline: boolean, deliveries: ActiveDelivery[]): CourierSessionState {
   if (!isOnline) {
     return 'offline';
   }
-  if (!delivery) {
+  if (deliveries.length === 0) {
     return 'waiting';
   }
-  if (delivery.status === 'en_route_to_pickup') {
+  // Хоть одна ещё не забрана с точки — вся сессия в фазе "еду за
+  // заказом", даже если вторая из бандла уже en_route_to_customer.
+  if (deliveries.some((d) => d.status === 'en_route_to_pickup')) {
     return 'to_pickup';
   }
-  if (delivery.status === 'en_route_to_customer') {
+  if (deliveries.some((d) => d.status === 'en_route_to_customer')) {
     return 'to_customer';
   }
   // GET /active по контракту бэка не возвращает финальные статусы
-  // (delivered/problem) — если всё же увидели такой, безопаснее считать
-  // "ждём", чем показать неверный экран действия.
+  // (delivered/problem) — если всё же увидели такой набор, безопаснее
+  // считать "ждём", чем показать неверный экран действия.
   return 'waiting';
+}
+
+function byBundlePosition(a: ActiveDelivery, b: ActiveDelivery): number {
+  return (a.bundle_position ?? 0) - (b.bundle_position ?? 0);
 }
 
 export function useCourierSession() {
@@ -70,8 +79,14 @@ export function useCourierSession() {
   });
 
   const deliveries = activeQuery.data ?? [];
-  const primaryDelivery = deliveries[0] ?? null;
-  const sessionState = computeState(isOnline, primaryDelivery);
+  const sessionState = computeState(isOnline, deliveries);
+
+  const pickupDeliveries = deliveries
+    .filter((d) => d.status === 'en_route_to_pickup')
+    .sort(byBundlePosition);
+  const customerDeliveries = deliveries
+    .filter((d) => d.status === 'en_route_to_customer')
+    .sort(byBundlePosition);
 
   // WS — только сигнал "перепроверь", решение о переподключении не
   // хранит собственное состояние компонента, только connect/disconnect.
@@ -112,9 +127,9 @@ export function useCourierSession() {
       stopLocationTracking();
     }
   }, [isOnline]);
-  useEffect(() => {
-    setActiveDeliveryForTracking(primaryDelivery?.id ?? null);
-  }, [primaryDelivery?.id]);
+  // Какая именно из (возможно двух) активных доставок помечает пачки
+  // геопинга — решает экран (какая карточка сейчас в фокусе), не этот
+  // хук: см. MapScreen.tsx, setActiveDeliveryForTracking там же.
 
   const [startShiftMutation, startShiftState] = useStartShiftMutation();
   const [endShiftMutation, endShiftState] = useEndShiftMutation();
@@ -137,7 +152,8 @@ export function useCourierSession() {
     isLoadingProfile: !me,
     courier: me ?? null,
     deliveries,
-    primaryDelivery,
+    pickupDeliveries,
+    customerDeliveries,
     isFetchingActive: activeQuery.isFetching,
     canEndShift: deliveries.length === 0,
     goOnline,
