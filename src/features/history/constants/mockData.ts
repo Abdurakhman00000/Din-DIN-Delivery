@@ -5,36 +5,37 @@ export const MOCK_HISTORY: Record<HistoryPeriod, HistoryResponse> = {
   today: {
     period: 'today',
     summary: {
-      title: 'Заработано сегодня',
-      amountLabel: '3 450 ₽',
+      title: 'Доставок сегодня',
+      deliveriesCount: 4,
+      portionsLabel: '11 порций',
     },
     orders: [
       {
         id: '1',
         address: 'ул. Ленина, 15, кв 42',
         deliveredAtLabel: 'Сегодня, 14:30',
-        earningsLabel: '450 ₽',
+        portionsLabel: '3 порции',
         status: 'delivered',
       },
       {
         id: '2',
         address: 'пр. Чуй, 88',
         deliveredAtLabel: 'Сегодня, 13:10',
-        earningsLabel: '380 ₽',
+        portionsLabel: '2 порции',
         status: 'delivered',
       },
       {
         id: '3',
         address: 'ул. Киевская, 102',
         deliveredAtLabel: 'Сегодня, 11:45',
-        earningsLabel: '520 ₽',
+        portionsLabel: '4 порции',
         status: 'delivered',
       },
       {
         id: '4',
         address: 'мкр. Джал, 12/3',
         deliveredAtLabel: 'Сегодня, 09:20',
-        earningsLabel: '410 ₽',
+        portionsLabel: '2 порции',
         status: 'delivered',
       },
     ],
@@ -42,22 +43,23 @@ export const MOCK_HISTORY: Record<HistoryPeriod, HistoryResponse> = {
   week: {
     period: 'week',
     summary: {
-      title: 'Заработано за неделю',
-      amountLabel: '18 200 ₽',
+      title: 'Доставок за неделю',
+      deliveriesCount: 2,
+      portionsLabel: '5 порций',
     },
     orders: [
       {
         id: '5',
         address: 'ул. Ибраимова, 4',
         deliveredAtLabel: 'Вчера, 18:40',
-        earningsLabel: '470 ₽',
+        portionsLabel: '3 порции',
         status: 'delivered',
       },
       {
         id: '6',
         address: 'ул. Токтогула, 21',
         deliveredAtLabel: 'Пн, 16:05',
-        earningsLabel: '390 ₽',
+        portionsLabel: '2 порции',
         status: 'delivered',
       },
     ],
@@ -65,15 +67,16 @@ export const MOCK_HISTORY: Record<HistoryPeriod, HistoryResponse> = {
   month: {
     period: 'month',
     summary: {
-      title: 'Заработано за месяц',
-      amountLabel: '72 800 ₽',
+      title: 'Доставок за месяц',
+      deliveriesCount: 1,
+      portionsLabel: '3 порции',
     },
     orders: [
       {
         id: '7',
         address: 'ул. Ахунбаева, 90',
         deliveredAtLabel: '12 авг, 15:12',
-        earningsLabel: '430 ₽',
+        portionsLabel: '3 порции',
         status: 'delivered',
       },
     ],

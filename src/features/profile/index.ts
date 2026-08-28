@@ -1,4 +1,4 @@
 // Feature: профиль
 export { ProfileScreen } from './screens/ProfileScreen';
-export type { CourierProfile, ProfileMenuId } from './types';
-export { useGetCourierProfileQuery } from './api/profileApi';
+export type { CourierProfile } from './types';
+export { useGetCourierMeQuery } from './api/profileApi';

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MOCK_AVATAR_URL } from '@/constants/app';
 import { COLORS } from '@/constants/theme';
 
-import { EarningsCard } from '../components/EarningsCard';
+import { DeliveryStatsCard } from '../components/DeliveryStatsCard';
 import { HistoryHeader } from '../components/HistoryHeader';
 import { HistoryOrderCard } from '../components/HistoryOrderCard';
 import { PeriodFilter } from '../components/PeriodFilter';
@@ -14,7 +14,7 @@ import type { HistoryPeriod } from '../types';
 
 export function HistoryScreen() {
   const [period, setPeriod] = useState<HistoryPeriod>('today');
-  // Позже: const { data } = useGetCourierHistoryQuery(period);
+  // Позже: const { data } = useGetCourierStatsQuery();
   const history = MOCK_HISTORY[period];
 
   return (
@@ -27,7 +27,7 @@ export function HistoryScreen() {
       >
         <Text style={styles.title}>История</Text>
         <PeriodFilter value={period} onChange={setPeriod} />
-        <EarningsCard summary={history.summary} />
+        <DeliveryStatsCard summary={history.summary} />
 
         <View style={styles.list}>
           {history.orders.map((order) => (

@@ -1,18 +1,25 @@
 // Tab-навигация основных разделов курьера
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ROUTES } from '@/constants/routes';
 import { COLORS } from '@/constants/theme';
+import { useAppSelector } from '@/store/hooks';
 
 const TAB_BAR_CONTENT_HEIGHT = 56;
 const ANDROID_NAV_EXTRA = 12;
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { bootstrapped, isAuthenticated } = useAppSelector((state) => state.auth);
   const bottomPadding =
     Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 8) + ANDROID_NAV_EXTRA;
+
+  if (bootstrapped && !isAuthenticated) {
+    return <Redirect href={ROUTES.auth.login} />;
+  }
 
   return (
     <Tabs

@@ -24,7 +24,7 @@ export const MOCK_PLACES: MapPlace[] = [
 
 export const MOCK_INCOMING_ORDER: IncomingOrder = {
   id: 'order-demo-1',
-  priceLabel: '450 ₽',
+  portionsLabel: '3 порции',
   durationLabel: '12 мин',
   distanceLabel: '2.4 км',
   deliveryDurationLabel: '8 мин',
@@ -34,8 +34,6 @@ export const MOCK_INCOMING_ORDER: IncomingOrder = {
   dropoffLabel: 'Доставка',
   dropoffAddress: 'ул. Киевская 114, кв. 15',
   comment: 'Позвонить за 5 минут до приезда',
-  earningsLabel: '450 ₽',
-  commissionLabel: '45 ₽',
   courier: { latitude: BISHKEK_CENTER.latitude, longitude: BISHKEK_CENTER.longitude },
   pickup: { latitude: 42.8824, longitude: 74.5822 },
   dropoff: { latitude: 42.8681, longitude: 74.6038 },

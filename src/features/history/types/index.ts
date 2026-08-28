@@ -8,13 +8,14 @@ export type HistoryOrder = {
   id: string;
   address: string;
   deliveredAtLabel: string;
-  earningsLabel: string;
+  portionsLabel: string;
   status: HistoryOrderStatus;
 };
 
 export type HistorySummary = {
   title: string;
-  amountLabel: string;
+  deliveriesCount: number;
+  portionsLabel: string;
 };
 
 export type HistoryResponse = {

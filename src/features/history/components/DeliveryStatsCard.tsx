@@ -5,19 +5,20 @@ import { COLORS } from '@/constants/theme';
 
 import type { HistorySummary } from '../types';
 
-type EarningsCardProps = {
+type DeliveryStatsCardProps = {
   summary: HistorySummary;
 };
 
-export function EarningsCard({ summary }: EarningsCardProps) {
+export function DeliveryStatsCard({ summary }: DeliveryStatsCardProps) {
   return (
     <View style={styles.card}>
       <View>
         <Text style={styles.title}>{summary.title}</Text>
-        <Text style={styles.amount}>{summary.amountLabel}</Text>
+        <Text style={styles.count}>{summary.deliveriesCount}</Text>
+        <Text style={styles.portions}>{summary.portionsLabel}</Text>
       </View>
       <View style={styles.iconWrap}>
-        <Ionicons name="wallet-outline" size={20} color={COLORS.primary} />
+        <Ionicons name="bicycle-outline" size={20} color={COLORS.primary} />
       </View>
     </View>
   );
@@ -38,10 +39,16 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginBottom: 4,
   },
-  amount: {
+  count: {
     fontSize: 28,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  portions: {
+    fontSize: 13,
+    color: COLORS.white,
+    opacity: 0.85,
+    marginTop: 2,
   },
   iconWrap: {
     width: 40,

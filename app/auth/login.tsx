@@ -1,10 +1,35 @@
 // Авторизация курьера
-import { Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
-export default function LoginScreen() {
-  return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text>Login</Text>
-    </View>
-  );
+import { ROUTES } from '@/constants/routes';
+import { COLORS } from '@/constants/theme';
+import { LoginScreen } from '@/features/auth';
+import { useAppSelector } from '@/store/hooks';
+
+export default function LoginRoute() {
+  const { bootstrapped, isAuthenticated } = useAppSelector((state) => state.auth);
+
+  if (!bootstrapped) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Redirect href={ROUTES.tabs.map} />;
+  }
+
+  return <LoginScreen />;
 }
+
+const styles = StyleSheet.create({
+  loader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.milky,
+  },
+});

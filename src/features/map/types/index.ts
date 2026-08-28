@@ -47,7 +47,7 @@ export type OrderPaymentStatus = 'pending' | 'paid' | 'unpaid';
 
 export type IncomingOrder = {
   id: string;
-  priceLabel: string;
+  portionsLabel: string;
   durationLabel: string;
   distanceLabel: string;
   deliveryDurationLabel: string;
@@ -57,8 +57,6 @@ export type IncomingOrder = {
   dropoffLabel: string;
   dropoffAddress: string;
   comment: string;
-  earningsLabel: string;
-  commissionLabel: string;
   courier: MapCoordinate;
   pickup: MapCoordinate;
   dropoff: MapCoordinate;

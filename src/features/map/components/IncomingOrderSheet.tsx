@@ -26,7 +26,10 @@ export function IncomingOrderSheet({ order, onAccept, onDecline }: IncomingOrder
             <Text style={styles.metaText}>{order.distanceLabel}</Text>
           </View>
         </View>
-        <Text style={styles.price}>{order.priceLabel}</Text>
+        <View style={styles.portionsBadge}>
+          <Ionicons name="restaurant-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.portionsText}>{order.portionsLabel}</Text>
+        </View>
       </View>
 
       <View style={styles.route}>
@@ -109,8 +112,17 @@ const styles = StyleSheet.create({
     color: COLORS.gray400,
     marginRight: 8,
   },
-  price: {
-    fontSize: 22,
+  portionsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  portionsText: {
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.primary,
   },

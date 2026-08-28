@@ -21,7 +21,7 @@ export function HistoryOrderCard({ order }: HistoryOrderCardProps) {
           <Text style={styles.address}>{order.address}</Text>
           <Text style={styles.date}>{order.deliveredAtLabel}</Text>
         </View>
-        <Text style={styles.price}>{order.earningsLabel}</Text>
+        <Text style={styles.portions}>{order.portionsLabel}</Text>
       </View>
       <View style={styles.status}>
         <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
@@ -59,10 +59,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.gray400,
   },
-  price: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.gray900,
+  portions: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gray600,
   },
   status: {
     flexDirection: 'row',

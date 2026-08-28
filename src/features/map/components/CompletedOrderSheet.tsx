@@ -15,17 +15,13 @@ export function CompletedOrderSheet({ order, onComplete }: CompletedOrderSheetPr
     <View style={styles.sheet}>
       <View style={styles.handle} />
       <Text style={styles.title}>Заказ выполнен</Text>
-      <Text style={styles.subtitle}>Клиент оплатил</Text>
+      <Text style={styles.subtitle}>Доставка завершена</Text>
 
-      <View style={styles.amountCard}>
-        <Text style={styles.amountLabel}>Вы получили</Text>
-        <Text style={styles.amount}>{order.earningsLabel}</Text>
+      <View style={styles.portionsCard}>
+        <Ionicons name="restaurant-outline" size={20} color={COLORS.white} />
+        <Text style={styles.portionsText}>{order.portionsLabel}</Text>
       </View>
 
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Комиссия</Text>
-        <Text style={styles.rowValue}>{order.commissionLabel}</Text>
-      </View>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Забор</Text>
         <Text style={styles.rowValue}>{order.pickupAddress}</Text>
@@ -43,7 +39,7 @@ export function CompletedOrderSheet({ order, onComplete }: CompletedOrderSheetPr
 
       <View style={styles.comment}>
         <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-        <Text style={styles.commentText}>Оплата получена, заказ можно закрыть</Text>
+        <Text style={styles.commentText}>Заказ можно закрыть</Text>
       </View>
 
       <Pressable style={styles.button} onPress={onComplete}>
@@ -86,20 +82,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
   },
-  amountCard: {
+  portionsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: COLORS.primary,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
   },
-  amountLabel: {
+  portionsText: {
     color: COLORS.white,
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  amount: {
-    color: COLORS.white,
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: '700',
   },
   row: {

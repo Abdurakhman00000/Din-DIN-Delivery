@@ -1,15 +1,16 @@
-// RTK Query — эндпоинты раздела «Профиль» (подключение API позже)
+// RTK Query — GET /api/courier/me
+import { API_ENDPOINTS } from '@/constants/api';
 import { baseApi } from '@/services/api/baseApi';
 
 import type { CourierProfile } from '../types';
 
 export const profileApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getCourierProfile: builder.query<CourierProfile, void>({
-      query: () => '/courier/profile',
-      providesTags: ['CourierProfile'],
+    getCourierMe: builder.query<CourierProfile, void>({
+      query: () => API_ENDPOINTS.courier.me,
+      providesTags: ['Courier'],
     }),
   }),
 });
 
-export const { useGetCourierProfileQuery } = profileApi;
+export const { useGetCourierMeQuery } = profileApi;

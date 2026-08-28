@@ -1,15 +1,7 @@
 // RTK Query — эндпоинты раздела «История» (подключение API позже)
+// Реальный путь: GET /api/courier/stats — см. API_ENDPOINTS в @/constants/api
 import { baseApi } from '@/services/api/baseApi';
 
-import type { HistoryPeriod, HistoryResponse } from '../types';
-
 export const historyApi = baseApi.injectEndpoints({
-  endpoints: (builder) => ({
-    getCourierHistory: builder.query<HistoryResponse, HistoryPeriod>({
-      query: (period) => `/courier/history?period=${period}`,
-      providesTags: ['History'],
-    }),
-  }),
+  endpoints: () => ({}),
 });
-
-export const { useGetCourierHistoryQuery } = historyApi;

@@ -1,4 +1,5 @@
 // Константы приложения
+export { API_BASE_URL, API_ENDPOINTS } from './api';
 export { APP_NAME, MOCK_AVATAR_URL, toAvatarSource } from './app';
 export type { AvatarSource } from './app';
 export { ROUTES } from './routes';

@@ -1,23 +1,26 @@
-// Типы для раздела «Профиль»
-import type { AvatarSource } from '@/constants/app';
+// Типы для раздела «Профиль» (GET /api/courier/me)
 
-export type ProfileMenuId =
-  | 'personal'
-  | 'requisites'
-  | 'transport'
-  | 'tasks'
-  | 'support'
-  | 'settings';
+export type CourierVehicle = 'foot' | 'bicycle' | 'car' | (string & {});
+
+export type CourierWorkStatus = 'offline' | 'online' | 'busy' | (string & {});
 
 export type CourierProfile = {
   id: string;
-  fullName: string;
-  avatarUrl: AvatarSource;
-  totalDeliveries: number;
+  phone: string;
+  full_name: string;
+  pickup_point_id: string;
+  vehicle: CourierVehicle;
+  status: CourierWorkStatus;
+  daily_quota_portions: number;
+  max_active_deliveries: number;
+  is_active: boolean;
+  hired_at: string;
+  created_at: string;
+  updated_at: string;
 };
 
-export type ProfileMenuItem = {
-  id: ProfileMenuId;
-  title: string;
-  icon: 'person-outline' | 'wallet-outline' | 'bicycle-outline' | 'clipboard-outline' | 'headset-outline' | 'settings-outline';
+export type ProfileInfoRow = {
+  label: string;
+  value: string;
+  icon: 'call-outline' | 'bicycle-outline' | 'radio-button-on-outline' | 'restaurant-outline' | 'layers-outline' | 'checkmark-circle-outline' | 'calendar-outline' | 'location-outline' | 'time-outline';
 };

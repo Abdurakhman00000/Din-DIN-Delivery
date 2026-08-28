@@ -7,6 +7,5 @@ export const ROUTES = {
   },
   auth: {
     login: '/auth/login',
-    verification: '/auth/verification',
   },
 } as const;
