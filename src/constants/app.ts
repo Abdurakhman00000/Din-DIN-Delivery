@@ -1,7 +1,7 @@
 // Общие константы приложения
 import type { ImageSource } from 'expo-image';
 
-export const APP_NAME = 'Din Din Delivery';
+export const APP_NAME = 'Teyva';
 
 export type AvatarSource = ImageSource | string;
 

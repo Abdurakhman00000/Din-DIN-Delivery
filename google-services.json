@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "405848582282",
+    "project_id": "din-din-15415",
+    "storage_bucket": "din-din-15415.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405848582282:android:73427dbad537e9855ce573",
+        "android_client_info": {
+          "package_name": "com.teyva.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgLY0S8tBAPKQkh6L8NDmo_yrZ41BHjyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

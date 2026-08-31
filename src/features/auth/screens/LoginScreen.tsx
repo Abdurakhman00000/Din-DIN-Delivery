@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 
 import { AppLogo } from '@/components/ui/AppLogo';
+import { APP_NAME } from '@/constants/app';
 import { ROUTES } from '@/constants/routes';
 import { COLORS, SHADOW } from '@/constants/theme';
 import { useLoginMutation } from '@/features/auth/api/authApi';
@@ -108,7 +109,7 @@ export function LoginScreen() {
         >
           <View style={[styles.hero, keyboardVisible && styles.heroCompact]}>
             <AppLogo size={keyboardVisible ? 56 : 72} iconSize={keyboardVisible ? 30 : 38} />
-            <Text style={[styles.title, keyboardVisible && styles.titleCompact]}>Din Din</Text>
+            <Text style={[styles.title, keyboardVisible && styles.titleCompact]}>{APP_NAME}</Text>
             <Text style={styles.subtitle}>Вход для курьеров</Text>
           </View>
 

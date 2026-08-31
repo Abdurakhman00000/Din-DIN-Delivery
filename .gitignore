@@ -16,6 +16,10 @@ expo-env.d.ts
 *.mobileprovision
 *.orig.*
 
+# Native (генерируется через `expo prebuild` / EAS Build)
+/android
+/ios
+
 # Metro
 .metro-health-check*
 

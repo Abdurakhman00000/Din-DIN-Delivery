@@ -9,7 +9,7 @@ export async function getDeviceId(): Promise<string> {
     return existing;
   }
 
-  const id = `dindin-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const id = `teyva-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   await setStorageString(DEVICE_ID_KEY, id);
   return id;
 }

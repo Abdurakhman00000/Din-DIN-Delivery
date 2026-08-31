@@ -9,11 +9,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { UpdateRequiredScreen, useAppVersionGate } from '@/features/appVersion';
 import { useAuthBootstrap } from '@/features/auth';
+import { usePushNotificationHandlers } from '@/hooks/usePushNotificationHandlers';
 import { store } from '@/store/store';
 
 function RootNavigator() {
   const versionGate = useAppVersionGate();
   useAuthBootstrap();
+  usePushNotificationHandlers();
 
   // Самая первая проверка при старте, ещё до входа — см. useAppVersionGate.
   if (versionGate.blocked) {

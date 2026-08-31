@@ -28,7 +28,6 @@ import { useGetCourierMeQuery } from '@/features/profile/api/profileApi';
 import { useEndShiftMutation, useStartShiftMutation } from '@/features/shifts/api/shiftsApi';
 import { getAccessToken } from '@/services/api/tokens';
 import { startLocationTracking, stopLocationTracking } from '@/services/location/locationTracker';
-import { subscribeToNotificationTaps } from '@/services/notifications/pushNotifications';
 import { CourierSocket } from '@/services/ws/courierSocket';
 
 export type CourierSessionState = 'offline' | 'waiting' | 'to_pickup' | 'to_customer';
@@ -107,14 +106,6 @@ export function useCourierSession() {
   }, [isOnline, isForeground]);
   useEffect(() => {
     return () => socketRef.current?.disconnect();
-  }, []);
-
-  // Push-тап — та же реакция, что и WS-событие: просто перепроверить.
-  useEffect(() => {
-    return subscribeToNotificationTaps(() => {
-      activeQuery.refetch();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Геотрекинг — привязан к online, не к переднему плану (см.

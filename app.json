@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Din Din Delivery",
-    "slug": "din-din-delivery",
+    "name": "Teyva",
+    "slug": "teyva-delivery",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "dindindelivery",
+    "scheme": "teyva",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dindin.delivery",
+      "bundleIdentifier": "com.teyva.delivery",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Location is used for courier delivery tracking.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Location is used for courier delivery tracking."
+        "NSLocationWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking."
       }
     },
     "android": {
@@ -23,7 +23,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.dindin.delivery",
+      "package": "com.teyva.delivery",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -42,10 +43,17 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Din Din Delivery to use your location for deliveries."
+          "locationAlwaysAndWhenInUsePermission": "Allow Teyva to use your location for deliveries."
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#16A34A",
+          "defaultChannel": "orders"
+        }
+      ],
       "expo-image"
     ],
     "experiments": {

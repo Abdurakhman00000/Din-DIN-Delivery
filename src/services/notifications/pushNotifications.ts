@@ -1,19 +1,31 @@
 // Push-уведомления (FCM). В Expo Go на Android (SDK 53+) remote push
 // недоступен — модуль нельзя импортировать на верхнем уровне, иначе
 // приложение падает при старте. Используем lazy-import + пропуск в Expo Go.
+//
+// Native build + google-services.json обязательны для FCM-токена на Android.
 
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 
 import { getAppPlatform, getAppVersion } from '@/utils/appVersion';
 
 type NotificationsModule = typeof import('expo-notifications');
+
+/** Канал Android — должен совпадать с defaultChannel в app.json и с
+ * channel_id на бэке, если FCM шлёт android.notification.channel_id. */
+export const ORDER_NOTIFICATION_CHANNEL = 'orders';
 
 let notificationsModulePromise: Promise<NotificationsModule | null> | null = null;
 let handlerConfigured = false;
 
 function isExpoGo(): boolean {
   return Constants.executionEnvironment === 'storeClient';
+}
+
+function isOrderNotification(data: Record<string, unknown> | undefined): boolean {
+  const type = data?.type;
+  return type === 'delivery.assigned' || type === 'bundle.assigned';
 }
 
 async function loadNotificationsModule(): Promise<NotificationsModule | null> {
@@ -31,7 +43,7 @@ async function loadNotificationsModule(): Promise<NotificationsModule | null> {
             handleNotification: async () => ({
               shouldShowBanner: true,
               shouldShowList: true,
-              shouldPlaySound: false,
+              shouldPlaySound: true,
               shouldSetBadge: false,
             }),
           });
@@ -48,13 +60,27 @@ async function loadNotificationsModule(): Promise<NotificationsModule | null> {
   return notificationsModulePromise;
 }
 
-/** Просит разрешение и возвращает нативный push-токен платформы, или
- * null — если разрешение не дали, устройство не поддерживает push
- * (симулятор/эмулятор/Expo Go), или Firebase ещё не настроен в проекте
- * (google-services.json/GoogleService-Info.plist). Ни один из этих
- * случаев не должен ронять остальной вход в приложение — курьер просто
- * не будет получать push, WS в моменты работы с приложением
- * по-прежнему работает. */
+/** Android 13+ требует канал до запроса push-токена (см. Expo docs). */
+export async function ensureAndroidNotificationChannel(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  const Notifications = await loadNotificationsModule();
+  if (!Notifications) {
+    return;
+  }
+
+  await Notifications.setNotificationChannelAsync(ORDER_NOTIFICATION_CHANNEL, {
+    name: 'Заказы',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#16A34A',
+    sound: 'default',
+  });
+}
+
+/** Просит разрешение и возвращает нативный FCM push-токен, или null. */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) {
     return null;
@@ -64,6 +90,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   if (!Notifications) {
     return null;
   }
+
+  await ensureAndroidNotificationChannel();
 
   const { status: existing } = await Notifications.getPermissionsAsync();
   let status = existing;
@@ -83,10 +111,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 }
 
-/** Запрашивает разрешение, получает токен и регистрирует устройство на
- * бэке — вызывать сразу после успешного входа (см. authApi.ts) и на
- * восстановлении сессии (см. useAuthBootstrap.ts). Тихо ничего не
- * делает при любой неудаче — push не блокирует вход. */
+/** Запрашивает разрешение, получает FCM-токен и регистрирует устройство на
+ * бэке — вызывать сразу после успешного входа и при восстановлении сессии. */
 export async function setupPushNotifications(): Promise<void> {
   const token = await registerForPushNotificationsAsync();
   if (!token) {
@@ -111,16 +137,14 @@ export async function setupPushNotifications(): Promise<void> {
       )
       .unwrap();
   } catch {
-    // Регистрация устройства — best-effort (см. register_device на бэке).
+    // Регистрация устройства — best-effort.
   }
 }
 
-/** Подписка на тап по уведомлению — безопасна в Expo Go (no-op).
- * onOrderSignal вызывается без данных заказа — обработчик должен
- * просто перепроверить GET /active, как и по WS-событию. */
-export function subscribeToNotificationTaps(onOrderSignal: () => void): () => void {
-  let removeListener: (() => void) | null = null;
+/** Слушатели push: foreground receive + tap + холодный старт по тапу. */
+export function setupPushNotificationListeners(onOrderSignal: () => void): () => void {
   let cancelled = false;
+  const cleanups: Array<() => void> = [];
 
   void (async () => {
     const Notifications = await loadNotificationsModule();
@@ -128,25 +152,47 @@ export function subscribeToNotificationTaps(onOrderSignal: () => void): () => vo
       return;
     }
 
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const type = response.notification.request.content.data?.type;
-      if (type === 'delivery.assigned' || type === 'bundle.assigned') {
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      if (isOrderNotification(notification.request.content.data as Record<string, unknown>)) {
         onOrderSignal();
       }
     });
+    cleanups.push(() => receivedSub.remove());
 
-    if (cancelled) {
-      subscription.remove();
-      return;
-    }
-
-    removeListener = () => subscription.remove();
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (isOrderNotification(response.notification.request.content.data as Record<string, unknown>)) {
+        onOrderSignal();
+      }
+    });
+    cleanups.push(() => responseSub.remove());
   })();
 
   return () => {
     cancelled = true;
-    removeListener?.();
+    cleanups.forEach((cleanup) => cleanup());
   };
+}
+
+/** Если приложение открыли тапом по push после kill — обработать один раз. */
+export async function handleColdStartNotification(onOrderSignal: () => void): Promise<void> {
+  const Notifications = await loadNotificationsModule();
+  if (!Notifications) {
+    return;
+  }
+
+  const last = await Notifications.getLastNotificationResponseAsync();
+  if (!last) {
+    return;
+  }
+
+  if (isOrderNotification(last.notification.request.content.data as Record<string, unknown>)) {
+    onOrderSignal();
+  }
+}
+
+/** @deprecated Используйте setupPushNotificationListeners — слушает только tap. */
+export function subscribeToNotificationTaps(onOrderSignal: () => void): () => void {
+  return setupPushNotificationListeners(onOrderSignal);
 }
 
 export { useRegisterDeviceMutation } from '@/features/devices/api/devicesApi';

@@ -1,10 +1,11 @@
 {
-  "name": "din-din-delivery",
+  "name": "teyva",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:dev": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",

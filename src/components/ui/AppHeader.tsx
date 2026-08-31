@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppLogo } from '@/components/ui/AppLogo';
 import { HeaderUserActions } from '@/components/ui/HeaderUserActions';
+import { APP_NAME } from '@/constants/app';
 import { COLORS } from '@/constants/theme';
 import { useCourierAvatar } from '@/features/profile/hooks/useCourierAvatar';
 
@@ -17,7 +18,7 @@ export function AppHeader({ onNotificationsPress, onAvatarPress }: AppHeaderProp
     <View style={styles.container}>
       <View style={styles.brand}>
         <AppLogo />
-        <Text style={styles.brandName}>Din Din</Text>
+        <Text style={styles.brandName}>{APP_NAME}</Text>
       </View>
 
       <HeaderUserActions
