@@ -1,9 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/ui/AppHeader';
 import { ROUTES } from '@/constants/routes';
 import { COLORS } from '@/constants/theme';
 import { useLogoutMutation } from '@/features/auth/api/authApi';
@@ -12,8 +10,9 @@ import { baseApi } from '@/services/api/baseApi';
 import { useAppDispatch } from '@/store/hooks';
 
 import { useGetCourierMeQuery } from '../api/profileApi';
+import { ProfileHero } from '../components/ProfileHero';
+import { ProfileInfoList } from '../components/ProfileInfoList';
 import { ProfileLogoutButton } from '../components/ProfileLogoutButton';
-import { ProfileSummaryCard } from '../components/ProfileSummaryCard';
 
 export function ProfileScreen() {
   const dispatch = useAppDispatch();
@@ -33,12 +32,12 @@ export function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <AppHeader />
+    <View style={styles.root}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         {isLoading ? (
           <View style={styles.stateWrap}>
@@ -62,16 +61,23 @@ export function ProfileScreen() {
           </View>
         ) : null}
 
-        {data ? <ProfileSummaryCard profile={data} /> : null}
+        {data ? (
+          <>
+            <ProfileHero profile={data} />
+            <ProfileInfoList profile={data} />
+          </>
+        ) : null}
 
-        <ProfileLogoutButton onPress={handleLogout} loading={isLoggingOut} />
+        <View style={styles.logoutWrap}>
+          <ProfileLogoutButton onPress={handleLogout} loading={isLoggingOut} />
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
@@ -80,15 +86,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 24,
-    gap: 16,
+    paddingBottom: 28,
+    flexGrow: 1,
   },
   stateWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 80,
+    paddingHorizontal: 24,
     gap: 10,
   },
   stateTitle: {
@@ -114,5 +119,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  logoutWrap: {
+    paddingHorizontal: 16,
+    marginTop: 20,
   },
 });

@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
-import { COLORS } from '@/constants/theme';
-
 type ProfileLogoutButtonProps = {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
 };
 
-export function ProfileLogoutButton({ onPress, loading = false, disabled = false }: ProfileLogoutButtonProps) {
+export function ProfileLogoutButton({
+  onPress,
+  loading = false,
+  disabled = false,
+}: ProfileLogoutButtonProps) {
   return (
     <Pressable
       style={[styles.button, (loading || disabled) && styles.buttonDisabled]}
@@ -37,7 +39,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
-    borderRadius: 16,
+    borderRadius: 18,
     minHeight: 52,
     paddingHorizontal: 16,
   },
