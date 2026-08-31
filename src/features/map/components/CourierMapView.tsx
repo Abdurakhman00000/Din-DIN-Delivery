@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -11,6 +11,11 @@ export type CourierMapViewRef = {
   centerOnBishkek: () => void;
   showRoute: (from: MapCoordinate, to: MapCoordinate, endLabel?: string) => void;
   clearRoute: () => void;
+};
+
+type CourierMapViewProps = {
+  /** false — WebView и Leaflet не реагируют на жесты (шторки поверх карты). */
+  interactionEnabled?: boolean;
 };
 
 function buildMockMapHtml() {
@@ -103,15 +108,45 @@ function buildMockMapHtml() {
 
         window.map.fitBounds([from, to], { padding: [50, 50] });
       };
+
+      window.setMapInteractive = function (enabled) {
+        if (!window.map) {
+          return;
+        }
+        var parts = [
+          window.map.dragging,
+          window.map.touchZoom,
+          window.map.doubleClickZoom,
+          window.map.scrollWheelZoom,
+          window.map.boxZoom,
+        ];
+        parts.forEach(function (handler) {
+          if (!handler) {
+            return;
+          }
+          if (enabled) {
+            handler.enable();
+          } else {
+            handler.disable();
+          }
+        });
+      };
     </script>
   </body>
 </html>
 `;
 }
 
-export const CourierMapView = forwardRef<CourierMapViewRef>(function CourierMapView(_, ref) {
+export const CourierMapView = forwardRef<CourierMapViewRef, CourierMapViewProps>(
+  function CourierMapView({ interactionEnabled = true }, ref) {
   const webViewRef = useRef<WebView>(null);
   const mapHtml = useMemo(() => buildMockMapHtml(), []);
+
+  useEffect(() => {
+    webViewRef.current?.injectJavaScript(
+      `window.setMapInteractive(${interactionEnabled ? 'true' : 'false'}); true;`,
+    );
+  }, [interactionEnabled]);
 
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
@@ -143,6 +178,7 @@ export const CourierMapView = forwardRef<CourierMapViewRef>(function CourierMapV
       ref={webViewRef}
       source={{ html: mapHtml }}
       style={styles.map}
+      pointerEvents={interactionEnabled ? 'auto' : 'none'}
       scrollEnabled={false}
       bounces={false}
       overScrollMode="never"
@@ -154,7 +190,8 @@ export const CourierMapView = forwardRef<CourierMapViewRef>(function CourierMapV
       showsVerticalScrollIndicator={false}
     />
   );
-});
+},
+);
 
 const styles = StyleSheet.create({
   map: {

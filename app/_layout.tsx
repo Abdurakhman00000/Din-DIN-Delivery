@@ -9,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { UpdateRequiredScreen, useAppVersionGate } from '@/features/appVersion';
 import { useAuthBootstrap } from '@/features/auth';
-import { NotificationsProvider } from '@/features/notifications';
+import { SheetsProvider } from '@/features/sheets';
 import { usePushNotificationHandlers } from '@/hooks/usePushNotificationHandlers';
 import { store } from '@/store/store';
 
@@ -29,13 +29,13 @@ function RootNavigator() {
   }
 
   return (
-    <NotificationsProvider>
+    <SheetsProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="auth/login" />
       </Stack>
-    </NotificationsProvider>
+    </SheetsProvider>
   );
 }
 

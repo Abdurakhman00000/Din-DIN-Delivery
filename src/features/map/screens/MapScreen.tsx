@@ -9,6 +9,7 @@ import {
 } from '@/features/deliveries/api/deliveriesApi';
 import type { ActiveDelivery, ChecklistItemIn, ProblemType } from '@/features/deliveries/types';
 import { useCourierSession } from '@/features/shifts';
+import { useGlobalOverlayOpen } from '@/hooks/useGlobalOverlayOpen';
 import { setActiveDeliveryForTracking } from '@/services/location/locationTracker';
 
 import { ActiveTripCard } from '../components/ActiveTripCard';
@@ -34,6 +35,9 @@ export function MapScreen() {
 
   const session = useCourierSession();
   const { state } = session;
+  const globalOverlayOpen = useGlobalOverlayOpen();
+  const mapInteractionEnabled =
+    !globalOverlayOpen && !searchOpen && !checklistOpen && !problemOpen;
 
   // До двух активных доставок разом (bundle — см. useCourierSession).
   // "Фокус" — какую из них сейчас показываем/ведём — локальный выбор
@@ -209,7 +213,7 @@ export function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <CourierMapView ref={mapRef} />
+      <CourierMapView ref={mapRef} interactionEnabled={mapInteractionEnabled} />
       {state === 'to_pickup' || state === 'to_customer' ? null : <CourierMarker />}
 
       <SafeAreaView style={styles.topOverlay} edges={['top']}>

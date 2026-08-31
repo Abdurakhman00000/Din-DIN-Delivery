@@ -1,11 +1,12 @@
 // Tab-навигация основных разделов курьера
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ROUTES } from '@/constants/routes';
 import { COLORS } from '@/constants/theme';
+import { useOptionalSheets } from '@/features/sheets';
 import { useAppSelector } from '@/store/hooks';
 
 const TAB_BAR_CONTENT_HEIGHT = 56;
@@ -14,6 +15,8 @@ const ANDROID_NAV_EXTRA = 12;
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { bootstrapped, isAuthenticated } = useAppSelector((state) => state.auth);
+  const sheets = useOptionalSheets();
+  const historyOpen = !!sheets?.isHistoryOpen;
   const bottomPadding =
     Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 8) + ANDROID_NAV_EXTRA;
 
@@ -49,6 +52,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="map"
+        listeners={{
+          tabPress: () => {
+            sheets?.closeSheet();
+          },
+        }}
         options={{
           title: 'Карта',
           tabBarIcon: ({ color, size, focused }) => (
@@ -58,15 +66,39 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="history"
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            sheets?.toggleSheet('history');
+          },
+        }}
         options={{
           title: 'История',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} />
+          tabBarIcon: ({ color, size }) => {
+            const tint = historyOpen ? COLORS.primary : color;
+            return <Ionicons name={historyOpen ? 'time' : 'time-outline'} size={size} color={tint} />;
+          },
+          tabBarLabel: ({ color }) => (
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '600',
+                marginTop: 2,
+                color: historyOpen ? COLORS.primary : color,
+              }}
+            >
+              История
+            </Text>
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
+        listeners={{
+          tabPress: () => {
+            sheets?.closeSheet();
+          },
+        }}
         options={{
           title: 'Профиль',
           tabBarIcon: ({ color, size, focused }) => (

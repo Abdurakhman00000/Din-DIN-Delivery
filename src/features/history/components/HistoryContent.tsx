@@ -1,19 +1,19 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { COLORS } from '@/constants/theme';
 import { useGetCourierStatsQuery } from '@/features/stats';
 
-import { DailyPortionsRow } from '../components/DailyPortionsRow';
-import { DeliveryStatsCard } from '../components/DeliveryStatsCard';
-import { HistoryHeader } from '../components/HistoryHeader';
-import { PeriodFilter } from '../components/PeriodFilter';
+import { DailyPortionsRow } from './DailyPortionsRow';
+import { DeliveryStatsCard } from './DeliveryStatsCard';
+import { PeriodFilter } from './PeriodFilter';
 import type { HistoryPeriod } from '../types';
 
-export function HistoryScreen() {
+/** Контент истории порций — один и тот же для шторки (и раньше для экрана). */
+export function HistoryContent() {
   const [period, setPeriod] = useState<HistoryPeriod>('today');
-  const { data: stats, isLoading, isFetching } = useGetCourierStatsQuery();
+  const { data: stats, isLoading, isFetching, isError, refetch } = useGetCourierStatsQuery();
 
   const statsCard =
     period === 'today'
@@ -29,24 +29,36 @@ export function HistoryScreen() {
         };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <HistoryHeader />
+    <View style={styles.root}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
-        <Text style={styles.title}>История</Text>
         <PeriodFilter value={period} onChange={setPeriod} />
 
         {isLoading ? (
-          <ActivityIndicator color={COLORS.primary} />
+          <ActivityIndicator color={COLORS.primary} style={styles.loader} />
+        ) : isError ? (
+          <View style={styles.errorWrap}>
+            <Text style={styles.errorTitle}>Не удалось загрузить</Text>
+            <Text style={styles.errorText} onPress={() => void refetch()}>
+              Нажмите, чтобы повторить
+            </Text>
+          </View>
         ) : (
           <DeliveryStatsCard {...statsCard} />
         )}
 
         <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>По дням</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>По дням</Text>
+            {isFetching && !isLoading ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : null}
+          </View>
+
           {stats && stats.history.length === 0 ? (
             <Text style={styles.emptyText}>Пока нет доставленных заказов</Text>
           ) : (
@@ -59,37 +71,48 @@ export function HistoryScreen() {
           )}
         </View>
       </ScrollView>
-      {isFetching && !isLoading ? (
-        <View style={styles.refreshHint}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-        </View>
-      ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    minHeight: 0,
   },
   scroll: {
     flex: 1,
-    backgroundColor: COLORS.white,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 58,
-    paddingBottom: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
     gap: 16,
   },
-  title: {
-    fontSize: 28,
+  loader: {
+    marginVertical: 24,
+  },
+  errorWrap: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 20,
+  },
+  errorTitle: {
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.gray900,
   },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
   historySection: {
     gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 15,
@@ -102,10 +125,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 8,
-  },
-  refreshHint: {
-    position: 'absolute',
-    top: 12,
-    right: 16,
   },
 });

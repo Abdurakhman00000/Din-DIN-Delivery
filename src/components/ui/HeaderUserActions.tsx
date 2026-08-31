@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { COLORS } from '@/constants/theme';
-import { useOptionalNotificationsUi } from '@/features/notifications';
+import { useOptionalSheets } from '@/features/sheets';
 
 type HeaderUserActionsProps = {
   fullName?: string | null;
@@ -20,9 +20,9 @@ export function HeaderUserActions({
   onAvatarPress,
   elevated = false,
 }: HeaderUserActionsProps) {
-  const notificationsUi = useOptionalNotificationsUi();
-  const handleNotificationsPress = onNotificationsPress ?? notificationsUi?.openNotifications;
-  const unreadCount = notificationsUi?.unreadCount ?? 0;
+  const sheets = useOptionalSheets();
+  const handleNotificationsPress = onNotificationsPress ?? sheets?.openNotifications;
+  const unreadCount = sheets?.unreadCount ?? 0;
 
   return (
     <View style={styles.row}>
