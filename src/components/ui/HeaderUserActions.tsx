@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { COLORS } from '@/constants/theme';
+import { useOptionalNotificationsUi } from '@/features/notifications';
 
 type HeaderUserActionsProps = {
   fullName?: string | null;
@@ -19,6 +20,10 @@ export function HeaderUserActions({
   onAvatarPress,
   elevated = false,
 }: HeaderUserActionsProps) {
+  const notificationsUi = useOptionalNotificationsUi();
+  const handleNotificationsPress = onNotificationsPress ?? notificationsUi?.openNotifications;
+  const unreadCount = notificationsUi?.unreadCount ?? 0;
+
   return (
     <View style={styles.row}>
       <Pressable
@@ -29,11 +34,16 @@ export function HeaderUserActions({
         <UserAvatar fullName={fullName ?? ''} photoUrl={photoUrl} size={36} />
       </Pressable>
       <Pressable
-        onPress={onNotificationsPress}
+        onPress={handleNotificationsPress}
         style={[styles.whiteCircle, elevated && styles.elevated]}
         accessibilityLabel="Уведомления"
       >
         <Ionicons name="notifications-outline" size={20} color={COLORS.gray900} />
+        {unreadCount > 0 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : String(unreadCount)}</Text>
+          </View>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -62,5 +72,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 11,
   },
 });

@@ -10,6 +10,11 @@ import { Platform } from 'react-native';
 
 import { getAppPlatform, getAppVersion } from '@/utils/appVersion';
 
+import {
+  addInboxNotification,
+  extractInboxFields,
+} from './notificationHistory';
+
 type NotificationsModule = typeof import('expo-notifications');
 
 /** Канал Android — должен совпадать с defaultChannel в app.json и с
@@ -26,6 +31,24 @@ function isExpoGo(): boolean {
 function isOrderNotification(data: Record<string, unknown> | undefined): boolean {
   const type = data?.type;
   return type === 'delivery.assigned' || type === 'bundle.assigned';
+}
+
+async function rememberNotification(notification: {
+  request: {
+    identifier: string;
+    content: {
+      title?: string | null;
+      body?: string | null;
+      data?: Record<string, unknown>;
+    };
+  };
+  date?: number;
+}): Promise<void> {
+  try {
+    await addInboxNotification(extractInboxFields(notification));
+  } catch {
+    // История — best-effort, не должна ломать realtime-флоу.
+  }
 }
 
 async function loadNotificationsModule(): Promise<NotificationsModule | null> {
@@ -139,6 +162,25 @@ export async function setupPushNotifications(): Promise<void> {
   } catch {
     // Регистрация устройства — best-effort.
   }
+
+  void syncPresentedNotificationsToInbox();
+}
+
+/** Подтянуть в inbox то, что ещё висит в системном трее. */
+export async function syncPresentedNotificationsToInbox(): Promise<void> {
+  const Notifications = await loadNotificationsModule();
+  if (!Notifications) {
+    return;
+  }
+
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    for (const notification of presented) {
+      await rememberNotification(notification);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 /** Слушатели push: foreground receive + tap + холодный старт по тапу. */
@@ -153,6 +195,7 @@ export function setupPushNotificationListeners(onOrderSignal: () => void): () =>
     }
 
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      void rememberNotification(notification);
       if (isOrderNotification(notification.request.content.data as Record<string, unknown>)) {
         onOrderSignal();
       }
@@ -160,6 +203,7 @@ export function setupPushNotificationListeners(onOrderSignal: () => void): () =>
     cleanups.push(() => receivedSub.remove());
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      void rememberNotification(response.notification);
       if (isOrderNotification(response.notification.request.content.data as Record<string, unknown>)) {
         onOrderSignal();
       }
@@ -184,6 +228,8 @@ export async function handleColdStartNotification(onOrderSignal: () => void): Pr
   if (!last) {
     return;
   }
+
+  await rememberNotification(last.notification);
 
   if (isOrderNotification(last.notification.request.content.data as Record<string, unknown>)) {
     onOrderSignal();
