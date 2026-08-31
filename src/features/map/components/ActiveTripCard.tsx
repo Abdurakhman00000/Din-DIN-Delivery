@@ -26,9 +26,10 @@ export function ActiveTripCard({
   const isToPickup = phase === 'to_pickup';
 
   const address = isToPickup
-    ? // Координаты/адрес точки выдачи — пока не на проде (см. флоу-документ
-      // backend'а, "Чего пока нет"), fallback на понятный текст, а не на
-      // пустоту или "undefined" на экране.
+    ? // На проде с 31.08.2026 — но остаётся опциональным (см. типа
+      // ActiveDelivery), фолбэк остаётся: пустота/"undefined" на
+      // экране хуже понятного текста, даже если сейчас это редкий
+      // случай, а не постоянный.
       (delivery.pickup_point_address ?? 'Адрес точки — уточняется')
     : delivery.customer_address;
 
