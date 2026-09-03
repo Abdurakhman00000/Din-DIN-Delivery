@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { COLORS } from '@/constants/theme';
+import { DARK, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import type { DailyPortionsEntry } from '@/features/stats';
 
 const WEEKDAY_MONTH: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
@@ -38,20 +38,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
+    borderColor: DARK.hairline,
+    borderRadius: RADIUS.md,
   },
   date: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.gray900,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
   portions: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray600,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textSecondary,
   },
 });

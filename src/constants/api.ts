@@ -1,7 +1,6 @@
 // Конфигурация API и пути эндпоинтов (реальный бэкенд)
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://169.58.192.208:8001';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://169.58.192.208:8001';
 
 /** Пути эндпоинтов — подключать по мере интеграции */
 export const API_ENDPOINTS = {

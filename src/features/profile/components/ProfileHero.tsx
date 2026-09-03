@@ -4,7 +4,7 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { COLORS, SHADOW } from '@/constants/theme';
+import { COLORS, DARK, DARK_SHADOW, FONTS, RADIUS, TYPE_SCALE } from '@/constants/theme';
 
 import type { CourierProfile, CourierWorkStatus } from '../types';
 import { getStatusLabel, getVehicleLabel } from '../utils/profileFormatters';
@@ -18,12 +18,12 @@ type ProfileHeroProps = {
 
 function statusAccent(status: CourierWorkStatus): string {
   if (status === 'online') {
-    return COLORS.primary;
+    return COLORS.primaryLight;
   }
   if (status === 'suspended') {
-    return '#DC2626';
+    return DARK.danger;
   }
-  return COLORS.gray600;
+  return DARK.textSecondary;
 }
 
 export function ProfileHero({ profile }: ProfileHeroProps) {
@@ -56,7 +56,7 @@ export function ProfileHero({ profile }: ProfileHeroProps) {
         </LinearGradient>
 
         <View style={styles.avatarAnchor}>
-          <View style={[styles.avatarRing, SHADOW.medium]}>
+          <View style={[styles.avatarRing, DARK_SHADOW.card]}>
             <UserAvatar
               fullName={name}
               photoUrl={profile.avatar_url}
@@ -69,18 +69,18 @@ export function ProfileHero({ profile }: ProfileHeroProps) {
       </View>
 
       <View style={styles.metaRow}>
-        <View style={[styles.metaChip, SHADOW.soft]}>
+        <View style={styles.metaChip}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <Text style={[styles.metaText, { color: statusColor }]}>
             {getStatusLabel(profile.status)}
           </Text>
         </View>
 
-        <View style={[styles.metaChip, SHADOW.soft]}>
+        <View style={styles.metaChip}>
           <Ionicons
             name={profile.vehicle === 'foot' ? 'walk-outline' : 'bicycle-outline'}
             size={16}
-            color={COLORS.primary}
+            color={COLORS.primaryLight}
           />
           <Text style={styles.metaTextDark}>{getVehicleLabel(profile.vehicle)}</Text>
         </View>
@@ -91,7 +91,7 @@ export function ProfileHero({ profile }: ProfileHeroProps) {
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: COLORS.white,
+    backgroundColor: DARK.bg,
   },
   headerClip: {
     width: SCREEN_WIDTH,
@@ -104,11 +104,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   name: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.white,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.headline - 2,
+    color: '#FFFFFF',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
   avatarAnchor: {
     position: 'absolute',
@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 22,
+    backgroundColor: DARK.surface,
+    borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairline,
   },
   statusDot: {
     width: 8,
@@ -151,12 +151,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   metaText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.label,
   },
   metaTextDark: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textPrimary,
   },
 });

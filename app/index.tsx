@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
 import { ROUTES } from '@/constants/routes';
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK } from '@/constants/theme';
 import { useAppSelector } from '@/store/hooks';
 
 export default function Index() {
@@ -12,7 +12,7 @@ export default function Index() {
   if (!bootstrapped) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.primaryLight} />
       </View>
     );
   }
@@ -29,6 +29,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.milky,
+    backgroundColor: DARK.bg,
   },
 });

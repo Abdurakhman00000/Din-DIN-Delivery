@@ -31,5 +31,14 @@ export type CourierProfile = {
 export type ProfileInfoRow = {
   label: string;
   value: string;
-  icon: 'call-outline' | 'bicycle-outline' | 'radio-button-on-outline' | 'restaurant-outline' | 'layers-outline' | 'checkmark-circle-outline' | 'calendar-outline' | 'location-outline' | 'time-outline';
+  icon:
+    | 'call-outline'
+    | 'bicycle-outline'
+    | 'radio-button-on-outline'
+    | 'restaurant-outline'
+    | 'layers-outline'
+    | 'checkmark-circle-outline'
+    | 'calendar-outline'
+    | 'location-outline'
+    | 'time-outline';
 };

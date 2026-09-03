@@ -5,7 +5,7 @@ import { Platform, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ROUTES } from '@/constants/routes';
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK, FONTS } from '@/constants/theme';
 import { useOptionalSheets } from '@/features/sheets';
 import { useAppSelector } from '@/store/hooks';
 
@@ -28,24 +28,24 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.gray400,
+        tabBarActiveTintColor: COLORS.primaryLight,
+        tabBarInactiveTintColor: DARK.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.milky,
+          backgroundColor: DARK.surface,
           borderTopWidth: 1,
-          borderTopColor: COLORS.border,
+          borderTopColor: DARK.hairline,
           height: TAB_BAR_CONTENT_HEIGHT + bottomPadding,
           paddingTop: 8,
           paddingBottom: bottomPadding,
           elevation: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
+          shadowOpacity: 0.24,
+          shadowRadius: 12,
         },
         tabBarLabelStyle: {
+          fontFamily: FONTS.semibold,
           fontSize: 11,
-          fontWeight: '600',
           marginTop: 2,
         },
       }}
@@ -75,16 +75,18 @@ export default function TabsLayout() {
         options={{
           title: 'История',
           tabBarIcon: ({ color, size }) => {
-            const tint = historyOpen ? COLORS.primary : color;
-            return <Ionicons name={historyOpen ? 'time' : 'time-outline'} size={size} color={tint} />;
+            const tint = historyOpen ? COLORS.primaryLight : color;
+            return (
+              <Ionicons name={historyOpen ? 'time' : 'time-outline'} size={size} color={tint} />
+            );
           },
           tabBarLabel: ({ color }) => (
             <Text
               style={{
+                fontFamily: FONTS.semibold,
                 fontSize: 11,
-                fontWeight: '600',
                 marginTop: 2,
-                color: historyOpen ? COLORS.primary : color,
+                color: historyOpen ? COLORS.primaryLight : color,
               }}
             >
               История

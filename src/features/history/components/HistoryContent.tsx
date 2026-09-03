@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK, FONTS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import { useGetCourierStatsQuery } from '@/features/stats';
 
 import { DailyPortionsRow } from './DailyPortionsRow';
@@ -66,7 +66,9 @@ export function HistoryContent() {
               {stats?.history
                 .slice()
                 .reverse()
-                .map((entry) => <DailyPortionsRow key={entry.day} entry={entry} />)}
+                .map((entry) => (
+                  <DailyPortionsRow key={entry.day} entry={entry} />
+                ))}
             </View>
           )}
         </View>
@@ -84,12 +86,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 8,
-    paddingBottom: 16,
-    gap: 16,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
+    gap: SPACING.lg,
   },
   loader: {
-    marginVertical: 24,
+    marginVertical: SPACING.xl,
   },
   errorWrap: {
     alignItems: 'center',
@@ -97,14 +99,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   errorTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
   errorText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '600',
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.body,
+    color: COLORS.primaryLight,
   },
   historySection: {
     gap: 10,
@@ -115,15 +117,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
   emptyText: {
-    fontSize: 14,
-    color: COLORS.gray400,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textMuted,
   },
   list: {
-    gap: 8,
+    gap: SPACING.sm,
   },
 });

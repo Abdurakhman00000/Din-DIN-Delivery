@@ -121,10 +121,7 @@ export class CourierSocket {
 
   private scheduleReconnect(): void {
     this.clearTimers();
-    const delay = Math.min(
-      RECONNECT_BASE_MS * 2 ** this.reconnectAttempt,
-      RECONNECT_MAX_MS,
-    );
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** this.reconnectAttempt, RECONNECT_MAX_MS);
     // Небольшой джиттер, чтобы много клиентов не переподключались хором
     // одной и той же секундой после общего сбоя сети/сервера.
     const jitter = Math.random() * 500;

@@ -30,7 +30,8 @@ export function useAuthBootstrap() {
 
       if (authenticated) {
         dispatch(profileApi.endpoints.getCourierMe.initiate(undefined, { forceRefetch: true }));
-        const { setupPushNotifications } = await import('@/services/notifications/pushNotifications');
+        const { setupPushNotifications } =
+          await import('@/services/notifications/pushNotifications');
         void setupPushNotifications();
       }
     }

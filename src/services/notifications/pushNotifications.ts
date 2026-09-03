@@ -10,10 +10,7 @@ import { Platform } from 'react-native';
 
 import { getAppPlatform, getAppVersion } from '@/utils/appVersion';
 
-import {
-  addInboxNotification,
-  extractInboxFields,
-} from './notificationHistory';
+import { addInboxNotification, extractInboxFields } from './notificationHistory';
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -204,7 +201,9 @@ export function setupPushNotificationListeners(onOrderSignal: () => void): () =>
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       void rememberNotification(response.notification);
-      if (isOrderNotification(response.notification.request.content.data as Record<string, unknown>)) {
+      if (
+        isOrderNotification(response.notification.request.content.data as Record<string, unknown>)
+      ) {
         onOrderSignal();
       }
     });

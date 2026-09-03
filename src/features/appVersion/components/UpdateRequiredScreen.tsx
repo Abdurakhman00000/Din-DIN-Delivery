@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLogo } from '@/components/ui/AppLogo';
-import { COLORS, SHADOW } from '@/constants/theme';
+import { COLORS, DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 
 type UpdateRequiredScreenProps = {
   minSupported: string | null;
@@ -20,10 +21,11 @@ type UpdateRequiredScreenProps = {
 export function UpdateRequiredScreen({ minSupported, updateUrl }: UpdateRequiredScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
       <View style={styles.content}>
         <AppLogo />
-        <View style={[styles.iconWrap, SHADOW.soft]}>
-          <Ionicons name="arrow-up-circle-outline" size={36} color={COLORS.primary} />
+        <View style={[styles.iconWrap, DARK_SHADOW.glow(COLORS.primary)]}>
+          <Ionicons name="arrow-up-circle" size={36} color={COLORS.primaryLight} />
         </View>
         <Text style={styles.title}>Нужно обновить приложение</Text>
         <Text style={styles.subtitle}>
@@ -50,47 +52,48 @@ export function UpdateRequiredScreen({ minSupported, updateUrl }: UpdateRequired
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: DARK.bg,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: 16,
+    paddingHorizontal: SPACING.xxl,
+    gap: SPACING.lg,
   },
   iconWrap: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#ECFDF3',
+    backgroundColor: DARK.primaryGlow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title + 2,
+    color: DARK.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.gray600,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   button: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
     alignSelf: 'stretch',
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.lg,
     alignItems: 'center',
   },
   buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
   },
 });

@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -20,7 +22,7 @@ import { router } from 'expo-router';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { APP_NAME } from '@/constants/app';
 import { ROUTES } from '@/constants/routes';
-import { COLORS, SHADOW } from '@/constants/theme';
+import { COLORS, DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import { useLoginMutation } from '@/features/auth/api/authApi';
 import { loginSchema, type LoginFormValues } from '@/features/auth/schemas/loginSchema';
 import { setAuthenticated } from '@/features/auth/store/authSlice';
@@ -28,7 +30,12 @@ import { parseAuthError } from '@/features/auth/utils/parseAuthError';
 import { profileApi } from '@/features/profile/api/profileApi';
 import { useAppDispatch } from '@/store/hooks';
 import { getDeviceId } from '@/utils/deviceId';
-import { formatLocalDigits, extractLocalDigits, KG_PHONE_PLACEHOLDER, normalizePhoneForApi } from '@/utils/phone';
+import {
+  formatLocalDigits,
+  extractLocalDigits,
+  KG_PHONE_PLACEHOLDER,
+  normalizePhoneForApi,
+} from '@/utils/phone';
 
 export function LoginScreen() {
   const dispatch = useAppDispatch();
@@ -72,6 +79,7 @@ export function LoginScreen() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       await login({
@@ -84,12 +92,14 @@ export function LoginScreen() {
       dispatch(profileApi.endpoints.getCourierMe.initiate(undefined, { forceRefetch: true }));
       router.replace(ROUTES.tabs.map);
     } catch (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setSubmitError(parseAuthError(error));
     }
   });
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -113,7 +123,7 @@ export function LoginScreen() {
             <Text style={styles.subtitle}>Вход для курьеров</Text>
           </View>
 
-          <View style={[styles.card, SHADOW.soft]}>
+          <View style={[styles.card, DARK_SHADOW.card]}>
             <Text style={styles.cardTitle}>Вход</Text>
             <Text style={styles.cardHint}>
               Используйте телефон и пароль, которые выдал администратор
@@ -126,12 +136,12 @@ export function LoginScreen() {
                 name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={[styles.inputWrap, errors.phone && styles.inputWrapError]}>
-                    <Ionicons name="call-outline" size={18} color={COLORS.gray400} />
+                    <Ionicons name="call-outline" size={18} color={DARK.textMuted} />
                     <Text style={styles.phonePrefix}>+996</Text>
                     <TextInput
                       style={styles.input}
                       placeholder={KG_PHONE_PLACEHOLDER}
-                      placeholderTextColor={COLORS.gray400}
+                      placeholderTextColor={DARK.textMuted}
                       keyboardType="number-pad"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -155,11 +165,11 @@ export function LoginScreen() {
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={[styles.inputWrap, errors.password && styles.inputWrapError]}>
-                    <Ionicons name="lock-closed-outline" size={18} color={COLORS.gray400} />
+                    <Ionicons name="lock-closed-outline" size={18} color={DARK.textMuted} />
                     <TextInput
                       style={styles.input}
                       placeholder="Введите пароль"
-                      placeholderTextColor={COLORS.gray400}
+                      placeholderTextColor={DARK.textMuted}
                       secureTextEntry={!showPassword}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -177,7 +187,7 @@ export function LoginScreen() {
                       <Ionicons
                         name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                         size={18}
-                        color={COLORS.gray400}
+                        color={DARK.textMuted}
                       />
                     </Pressable>
                   </View>
@@ -188,18 +198,22 @@ export function LoginScreen() {
 
             {submitError ? (
               <View style={styles.submitError}>
-                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Ionicons name="alert-circle" size={16} color={DARK.danger} />
                 <Text style={styles.submitErrorText}>{submitError}</Text>
               </View>
             ) : null}
 
             <Pressable
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              style={({ pressed }) => [
+                styles.button,
+                isLoading && styles.buttonDisabled,
+                pressed && !isLoading && styles.buttonPressed,
+              ]}
               onPress={onSubmit}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color={COLORS.white} />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.buttonText}>Войти</Text>
               )}
@@ -219,15 +233,15 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.milky,
+    backgroundColor: DARK.bg,
   },
   flex: {
     flex: 1,
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: SPACING.xl - 4,
+    paddingTop: SPACING.xl,
   },
   contentCentered: {
     justifyContent: 'center',
@@ -244,115 +258,126 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 16,
-    fontSize: 32,
-    fontWeight: '800',
-    color: COLORS.gray900,
+    fontFamily: FONTS.extrabold,
+    fontSize: TYPE_SCALE.display,
+    color: DARK.textPrimary,
   },
   titleCompact: {
     marginTop: 10,
-    fontSize: 26,
+    fontSize: TYPE_SCALE.headline + 2,
   },
   subtitle: {
     marginTop: 6,
-    fontSize: 15,
-    color: COLORS.gray600,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textSecondary,
   },
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: DARK.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl - 4,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairline,
   },
   cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title + 2,
+    color: DARK.textPrimary,
   },
   cardHint: {
     marginTop: 6,
-    marginBottom: 20,
-    fontSize: 13,
+    marginBottom: SPACING.xl - 4,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.label,
     lineHeight: 18,
-    color: COLORS.gray600,
+    color: DARK.textSecondary,
   },
   field: {
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   label: {
-    marginBottom: 8,
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.gray600,
+    marginBottom: SPACING.sm,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textSecondary,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    backgroundColor: COLORS.milky,
-    paddingHorizontal: 14,
+    borderColor: DARK.hairline,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: SPACING.md + 2,
     minHeight: 52,
   },
   inputWrapError: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    borderColor: 'rgba(248,113,113,0.5)',
+    backgroundColor: DARK.dangerGlow,
   },
   phonePrefix: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.gray900,
-    marginRight: 6,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textPrimary,
+    marginRight: 2,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: COLORS.gray900,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textPrimary,
     paddingVertical: 12,
   },
   error: {
     marginTop: 6,
-    fontSize: 12,
-    color: '#DC2626',
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.caption,
+    color: DARK.danger,
   },
   submitError: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: DARK.dangerGlow,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.3)',
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   submitErrorText: {
     flex: 1,
-    fontSize: 13,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
     lineHeight: 18,
-    color: '#DC2626',
+    color: '#FCA5A5',
   },
   button: {
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
+    borderRadius: RADIUS.lg,
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonPressed: {
+    opacity: 0.85,
+  },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
   },
   footer: {
-    marginTop: 20,
+    marginTop: SPACING.xl - 4,
     textAlign: 'center',
-    fontSize: 12,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.caption,
     lineHeight: 18,
-    color: COLORS.gray400,
-    paddingHorizontal: 8,
+    color: DARK.textMuted,
+    paddingHorizontal: SPACING.sm,
   },
 });

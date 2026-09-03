@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import type { InboxNotification } from '@/features/notifications/types';
 
 type NotificationsContentProps = {
@@ -40,7 +40,7 @@ export function NotificationsContent({ items }: NotificationsContentProps) {
     >
       {items.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Ionicons name="notifications-outline" size={32} color={COLORS.gray400} />
+          <Ionicons name="notifications-outline" size={32} color={DARK.textMuted} />
           <Text style={styles.emptyTitle}>Пока нет уведомлений</Text>
           <Text style={styles.emptyText}>Новые заказы появятся здесь, когда придёт push</Text>
         </View>
@@ -48,7 +48,7 @@ export function NotificationsContent({ items }: NotificationsContentProps) {
         items.map((item) => (
           <View key={item.id} style={[styles.row, !item.read && styles.rowUnread]}>
             <View style={styles.iconWrap}>
-              <Ionicons name="notifications" size={18} color={COLORS.primary} />
+              <Ionicons name="notifications" size={18} color={COLORS.primaryLight} />
             </View>
             <View style={styles.content}>
               <View style={styles.rowTop}>
@@ -73,28 +73,31 @@ export function NotificationsContent({ items }: NotificationsContentProps) {
 const styles = StyleSheet.create({
   list: {
     flex: 1,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   listContent: {
-    paddingBottom: 8,
-    gap: 8,
+    paddingBottom: SPACING.sm,
+    gap: SPACING.sm,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
-    paddingVertical: 12,
+    gap: SPACING.md,
+    paddingVertical: SPACING.md,
     paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: COLORS.gray100,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: DARK.hairline,
   },
   rowUnread: {
-    backgroundColor: '#ECFDF3',
+    backgroundColor: DARK.primaryGlow,
+    borderColor: 'rgba(34,197,94,0.3)',
   },
   iconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -105,37 +108,40 @@ const styles = StyleSheet.create({
   rowTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   itemTitle: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
   time: {
-    fontSize: 12,
-    color: COLORS.gray400,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.caption,
+    color: DARK.textMuted,
   },
   itemBody: {
-    fontSize: 13,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.label,
     lineHeight: 18,
-    color: COLORS.gray600,
+    color: DARK.textSecondary,
   },
   emptyWrap: {
     alignItems: 'center',
     paddingTop: 48,
-    paddingHorizontal: 24,
-    gap: 8,
+    paddingHorizontal: SPACING.xl,
+    gap: SPACING.sm,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textPrimary,
   },
   emptyText: {
-    fontSize: 14,
-    color: COLORS.gray400,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },

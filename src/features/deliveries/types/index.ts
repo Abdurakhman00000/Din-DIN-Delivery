@@ -4,10 +4,7 @@
 // "предложения" или его срока действия, только реальная карточка заказа.
 
 export type DeliveryStatus =
-  | 'en_route_to_pickup'
-  | 'en_route_to_customer'
-  | 'delivered'
-  | 'problem';
+  'en_route_to_pickup' | 'en_route_to_customer' | 'delivered' | 'problem';
 
 export type TariffType = 'now' | 'preorder_3h' | 'next_day';
 
@@ -16,11 +13,7 @@ export type PaymentMethod = 'cash' | 'online';
 /** Ровно 5 типов, как на бэке — `leave_at_reception` не переводит
  * доставку в статус `problem` (это инструкция клиента, не сбой). */
 export type ProblemType =
-  | 'client_not_answering'
-  | 'leave_at_reception'
-  | 'return_to_point'
-  | 'contact_support'
-  | 'other';
+  'client_not_answering' | 'leave_at_reception' | 'return_to_point' | 'contact_support' | 'other';
 
 export type DeliveryItem = {
   id: string;

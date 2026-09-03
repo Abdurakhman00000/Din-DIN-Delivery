@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 
 type DeliveryStatsCardProps = {
   title: string;
@@ -11,14 +11,14 @@ type DeliveryStatsCardProps = {
 
 export function DeliveryStatsCard({ title, value, subtitle }: DeliveryStatsCardProps) {
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, DARK_SHADOW.glow(COLORS.primary)]}>
       <View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.count}>{value}</Text>
         <Text style={styles.portions}>{subtitle}</Text>
       </View>
       <View style={styles.iconWrap}>
-        <Ionicons name="restaurant-outline" size={20} color={COLORS.primary} />
+        <Ionicons name="restaurant" size={20} color={COLORS.primary} />
       </View>
     </View>
   );
@@ -30,31 +30,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl - 2,
   },
   title: {
-    fontSize: 13,
-    color: COLORS.white,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: 'rgba(255,255,255,0.85)',
     marginBottom: 4,
   },
   count: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.white,
+    fontFamily: FONTS.extrabold,
+    fontSize: TYPE_SCALE.headline + 4,
+    color: '#FFFFFF',
   },
   portions: {
-    fontSize: 13,
-    color: COLORS.white,
-    opacity: 0.85,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 2,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.white,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -47,7 +47,11 @@ export function UserAvatar({
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    backgroundColor: '#ECFDF3',
+    // Полупрозрачная зелёная подложка, не сплошная (#ECFDF3) — этот
+    // компонент используется и на светлых поверхностях (кольцо аватара
+    // на ProfileHero), и на тёмном стекле (HeaderUserActions с dark) —
+    // полупрозрачность одинаково хорошо читается на обеих.
+    backgroundColor: 'rgba(22, 163, 74, 0.16)',
     borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -58,6 +62,6 @@ const styles = StyleSheet.create({
   },
   initials: {
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.primaryLight,
   },
 });

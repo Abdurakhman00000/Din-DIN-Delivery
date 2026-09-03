@@ -17,7 +17,8 @@ export const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_arg, { queryFulfilled }) {
         const { data } = await queryFulfilled;
         await saveTokens(data.access_token, data.refresh_token);
-        const { setupPushNotifications } = await import('@/services/notifications/pushNotifications');
+        const { setupPushNotifications } =
+          await import('@/services/notifications/pushNotifications');
         void setupPushNotifications();
       },
     }),

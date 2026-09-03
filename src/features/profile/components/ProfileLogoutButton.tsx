@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+
+import { DARK, FONTS, RADIUS, TYPE_SCALE } from '@/constants/theme';
 
 type ProfileLogoutButtonProps = {
   onPress: () => void;
@@ -12,17 +15,26 @@ export function ProfileLogoutButton({
   loading = false,
   disabled = false,
 }: ProfileLogoutButtonProps) {
+  function handlePress() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onPress();
+  }
+
   return (
     <Pressable
-      style={[styles.button, (loading || disabled) && styles.buttonDisabled]}
-      onPress={onPress}
+      style={({ pressed }) => [
+        styles.button,
+        (loading || disabled) && styles.buttonDisabled,
+        pressed && !disabled && !loading && styles.buttonPressed,
+      ]}
+      onPress={handlePress}
       disabled={loading || disabled}
     >
       {loading ? (
-        <ActivityIndicator color="#DC2626" />
+        <ActivityIndicator color={DARK.danger} />
       ) : (
         <>
-          <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+          <Ionicons name="log-out-outline" size={18} color={DARK.danger} />
           <Text style={styles.text}>Выйти из аккаунта</Text>
         </>
       )}
@@ -36,19 +48,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: DARK.dangerGlow,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 18,
+    borderColor: 'rgba(248,113,113,0.3)',
+    borderRadius: RADIUS.lg,
     minHeight: 52,
     paddingHorizontal: 16,
   },
-  buttonDisabled: {
+  buttonPressed: {
     opacity: 0.7,
   },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
   text: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#DC2626',
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.danger,
   },
 });

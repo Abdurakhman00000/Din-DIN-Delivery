@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '@/constants/theme';
+import { DARK, DARK_SHADOW, FONTS, RADIUS, TYPE_SCALE } from '@/constants/theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -76,6 +76,13 @@ export function SwipeSheet({
   useEffect(() => {
     if (visible) {
       closingFromGesture.value = false;
+      // Переход "открывают" — mounted должен стать true синхронно с этим
+      // же эффектом, чтобы анимация открытия ниже стартовала в том же
+      // цикле, а не кадром позже (был бы видимый скачок). Уже есть тот
+      // же прецедент в этом файле для react-hooks/immutability — тот же
+      // принцип: эффект специально синхронизирует состояние с внешним
+      // жестом/пропом, а не производит его.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMounted(true);
       translateY.value = withTiming(0, { duration: OPEN_MS, easing: OPEN_EASING });
       return;
@@ -145,7 +152,7 @@ export function SwipeSheet({
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateY.value, [0, sheetHeightSV.value], [0.42, 0], 'clamp'),
+    opacity: interpolate(translateY.value, [0, sheetHeightSV.value], [0.55, 0], 'clamp'),
   }));
 
   if (!mounted) {
@@ -153,19 +160,23 @@ export function SwipeSheet({
   }
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, styles.root]} pointerEvents="box-none">
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={closeOnBackdropPress ? requestClose : undefined}
         accessible={false}
       >
-        <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents="none" />
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
+          pointerEvents="none"
+        />
       </Pressable>
 
       <GestureDetector gesture={composed}>
         <Animated.View
           style={[
             styles.sheet,
+            DARK_SHADOW.card,
             sheetStyle,
             { height: sheetHeight, paddingBottom: Math.max(insets.bottom, 12) },
           ]}
@@ -184,22 +195,23 @@ export function SwipeSheet({
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
     zIndex: 100,
     elevation: 100,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: DARK.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
+    borderBottomWidth: 0,
     paddingHorizontal: 16,
   },
   handleWrap: {
@@ -211,14 +223,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
+    backgroundColor: DARK.hairlineStrong,
     marginBottom: 12,
   },
   title: {
     alignSelf: 'stretch',
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title,
+    color: DARK.textPrimary,
   },
   body: {
     flex: 1,

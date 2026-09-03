@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 
 import type { HistoryPeriod } from '../types';
 
@@ -17,6 +18,11 @@ type PeriodFilterProps = {
 };
 
 export function PeriodFilter({ value, onChange }: PeriodFilterProps) {
+  function handleChange(period: HistoryPeriod) {
+    void Haptics.selectionAsync();
+    onChange(period);
+  }
+
   return (
     <View style={styles.row}>
       {PERIODS.map((period) => {
@@ -25,7 +31,7 @@ export function PeriodFilter({ value, onChange }: PeriodFilterProps) {
         return (
           <Pressable
             key={period.id}
-            onPress={() => onChange(period.id)}
+            onPress={() => handleChange(period.id)}
             style={[styles.chip, selected && styles.chipSelected]}
           >
             <Text style={[styles.label, selected && styles.labelSelected]}>{period.label}</Text>
@@ -39,23 +45,26 @@ export function PeriodFilter({ value, onChange }: PeriodFilterProps) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray100,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: DARK.hairline,
   },
   chipSelected: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray600,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textSecondary,
   },
   labelSelected: {
-    color: COLORS.white,
+    color: '#FFFFFF',
   },
 });

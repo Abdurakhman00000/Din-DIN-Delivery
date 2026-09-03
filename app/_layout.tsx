@@ -53,7 +53,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <Provider store={store}>
-          <StatusBar style="auto" />
+          {/* Приложение целиком тёмное с редизайна 03.09.2026 — светлых
+              экранов, которым нужны тёмные иконки статус-бара, больше
+              нет. Локальные <StatusBar style="light" /> по экранам
+              оставлены как явная подстраховка, этот — дефолт. */}
+          <StatusBar style="light" />
           <RootNavigator />
         </Provider>
       </SafeAreaProvider>

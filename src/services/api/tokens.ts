@@ -1,11 +1,7 @@
 // Хранение и обновление токенов авторизации
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api';
 import type { AuthTokenPair } from '@/features/auth/types';
-import {
-  deleteSecureItem,
-  getSecureItem,
-  saveSecureItem,
-} from '@/utils/secureStorage';
+import { deleteSecureItem, getSecureItem, saveSecureItem } from '@/utils/secureStorage';
 
 const ACCESS_TOKEN_KEY = 'courier_access_token';
 const REFRESH_TOKEN_KEY = 'courier_refresh_token';

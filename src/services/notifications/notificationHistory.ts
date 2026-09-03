@@ -43,10 +43,7 @@ function titleFromType(type: string | null): string | null {
 
 function bodyFromData(data: Record<string, unknown>): string | null {
   const direct =
-    asString(data.body) ??
-    asString(data.message) ??
-    asString(data.text) ??
-    asString(data.subtitle);
+    asString(data.body) ?? asString(data.message) ?? asString(data.text) ?? asString(data.subtitle);
   if (direct) {
     return direct;
   }
@@ -74,7 +71,9 @@ function contentScore(title: string, body: string): number {
   return generic + body.length;
 }
 
-function dedupeKey(item: Pick<InboxNotification, 'type' | 'deliveryId' | 'title' | 'body' | 'id'>): string {
+function dedupeKey(
+  item: Pick<InboxNotification, 'type' | 'deliveryId' | 'title' | 'body' | 'id'>,
+): string {
   if (item.deliveryId) {
     return `${item.type ?? 'unknown'}:${item.deliveryId}`;
   }
@@ -84,7 +83,9 @@ function dedupeKey(item: Pick<InboxNotification, 'type' | 'deliveryId' | 'title'
   return `${item.type ?? 'unknown'}:${item.title}:${item.body}`;
 }
 
-function isUsefulItem(item: Pick<InboxNotification, 'title' | 'body' | 'type' | 'deliveryId'>): boolean {
+function isUsefulItem(
+  item: Pick<InboxNotification, 'title' | 'body' | 'type' | 'deliveryId'>,
+): boolean {
   if (item.deliveryId || item.type) {
     return true;
   }
@@ -239,10 +240,7 @@ export function extractInboxFields(notification: {
     asString(data.notification_title) ??
     titleFromType(type);
 
-  const body =
-    asString(content.body) ??
-    asString(content.subtitle) ??
-    bodyFromData(data);
+  const body = asString(content.body) ?? asString(content.subtitle) ?? bodyFromData(data);
 
   return {
     id: notification.request.identifier || undefined,
