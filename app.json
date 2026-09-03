@@ -12,8 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.teyva.delivery",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking."
+        "NSLocationWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking, including while the app is in the background during a shift.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Teyva uses your location for courier delivery tracking, including while the app is in the background during a shift."
       }
     },
     "android": {
@@ -39,7 +39,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Teyva to use your location for deliveries."
+          "locationAlwaysAndWhenInUsePermission": "Allow Teyva to use your location for deliveries, even when the app is in the background during a shift.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ],
       [
