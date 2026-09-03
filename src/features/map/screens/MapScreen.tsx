@@ -14,7 +14,11 @@ import { setActiveDeliveryForTracking } from '@/services/location/locationTracke
 
 import { ActiveTripCard } from '../components/ActiveTripCard';
 import { ChecklistSheet } from '../components/ChecklistSheet';
-import { CourierMapView, type CourierMapViewRef } from '../components/CourierMapView';
+import {
+  CourierMapView,
+  type CourierMapViewRef,
+  type RouteInfo,
+} from '../components/CourierMapView';
 import { CourierMarker } from '../components/CourierMarker';
 import { GoOnlineButton } from '../components/GoOnlineButton';
 import { MapHeader } from '../components/MapHeader';
@@ -36,8 +40,7 @@ export function MapScreen() {
   const session = useCourierSession();
   const { state } = session;
   const globalOverlayOpen = useGlobalOverlayOpen();
-  const mapInteractionEnabled =
-    !globalOverlayOpen && !searchOpen && !checklistOpen && !problemOpen;
+  const mapInteractionEnabled = !globalOverlayOpen && !searchOpen && !checklistOpen && !problemOpen;
 
   // До двух активных доставок разом (bundle — см. useCourierSession).
   // "Фокус" — какую из них сейчас показываем/ведём — локальный выбор
@@ -59,6 +62,13 @@ export function MapScreen() {
   const [reportProblem, problemState] = useReportProblemMutation();
 
   const courierPosition = useCourierPosition(state === 'to_pickup' || state === 'to_customer');
+
+  // Реальные distance/duration от 2ГИС Routing API для текущего показанного
+  // маршрута — обновляется через onRouteInfo у CourierMapView (сообщение из
+  // WebView). null — либо ещё грузится, либо запрос не удался; в обоих
+  // случаях ActiveTripCard откатывается на честное приближение "по прямой"
+  // (см. utils/geo.ts), не показывает пусто и не врёт устаревшим числом.
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
 
   // Только что вышел на линию — короткий тост "ожидайте заказов".
   // Показываем ровно там, где произошло событие (успешный вызов
@@ -180,7 +190,11 @@ export function MapScreen() {
       return;
     }
     try {
-      await reportProblem({ deliveryId: selected.id, type, comment: comment || undefined }).unwrap();
+      await reportProblem({
+        deliveryId: selected.id,
+        type,
+        comment: comment || undefined,
+      }).unwrap();
       setProblemOpen(false);
       // leave_at_reception не закрывает заказ (см. ProblemSheet) — курьер
       // продолжает как обычно и сам жмёт "Доставил"; остальные типы
@@ -213,7 +227,12 @@ export function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <CourierMapView ref={mapRef} interactionEnabled={mapInteractionEnabled} />
+      <CourierMapView
+        ref={mapRef}
+        interactionEnabled={mapInteractionEnabled}
+        vehicle={session.courier?.vehicle ?? 'foot'}
+        onRouteInfo={setRouteInfo}
+      />
       {state === 'to_pickup' || state === 'to_customer' ? null : <CourierMarker />}
 
       <SafeAreaView style={styles.topOverlay} edges={['top']}>
@@ -230,6 +249,7 @@ export function MapScreen() {
               delivery={selected}
               phase={state}
               courierPosition={courierPosition}
+              routeInfo={routeInfo}
               onProblemPress={openProblem}
             />
           </View>

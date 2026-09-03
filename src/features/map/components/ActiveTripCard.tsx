@@ -4,8 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { COLORS, SHADOW } from '@/constants/theme';
 import type { ActiveDelivery } from '@/features/deliveries/types';
-import { formatDistanceKm, straightLineDistanceKm } from '@/utils/geo';
+import { formatDistanceKm, formatDurationMin, straightLineDistanceKm } from '@/utils/geo';
 
+import type { RouteInfo } from './CourierMapView';
 import type { MapCoordinate } from '../types';
 
 type TripPhase = 'to_pickup' | 'to_customer';
@@ -14,6 +15,10 @@ type ActiveTripCardProps = {
   delivery: ActiveDelivery;
   phase: TripPhase;
   courierPosition: MapCoordinate | null;
+  /** Реальные distance/duration от 2ГИС Routing API для текущего
+   * маршрута — null, пока не пришли (тогда ниже используется честное
+   * приближение "по прямой") или запрос не удался. См. CourierMapView. */
+  routeInfo: RouteInfo | null;
   onProblemPress: () => void;
 };
 
@@ -21,6 +26,7 @@ export function ActiveTripCard({
   delivery,
   phase,
   courierPosition,
+  routeInfo,
   onProblemPress,
 }: ActiveTripCardProps) {
   const isToPickup = phase === 'to_pickup';
@@ -39,10 +45,14 @@ export function ActiveTripCard({
       : null
     : { latitude: delivery.customer_latitude, longitude: delivery.customer_longitude };
 
-  const distanceLabel =
-    courierPosition && destination
+  // Реальный маршрут от 2ГИС — приоритет; пока не пришёл (или не удался),
+  // честное приближение "по прямой", а не пусто (см. utils/geo.ts).
+  const distanceLabel = routeInfo
+    ? formatDistanceKm(routeInfo.distanceM / 1000)
+    : courierPosition && destination
       ? formatDistanceKm(straightLineDistanceKm(courierPosition, destination))
       : null;
+  const durationLabel = routeInfo ? formatDurationMin(routeInfo.durationS) : null;
 
   const bundleLabel =
     delivery.bundle_id && delivery.bundle_position
@@ -64,6 +74,7 @@ export function ActiveTripCard({
         {distanceLabel ? (
           <View style={styles.eta}>
             <Text style={styles.etaDistance}>{distanceLabel}</Text>
+            {durationLabel ? <Text style={styles.etaDuration}>{durationLabel}</Text> : null}
           </View>
         ) : null}
       </View>
@@ -83,9 +94,7 @@ export function ActiveTripCard({
             size={16}
             color={canCall ? COLORS.gray900 : COLORS.gray400}
           />
-          <Text style={[styles.actionText, !canCall && styles.actionTextDisabled]}>
-            Позвонить
-          </Text>
+          <Text style={[styles.actionText, !canCall && styles.actionTextDisabled]}>Позвонить</Text>
         </Pressable>
         <Pressable style={styles.action} onPress={onProblemPress}>
           <Ionicons name="alert-circle-outline" size={16} color={COLORS.gray900} />
@@ -131,6 +140,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.gray600,
+  },
+  etaDuration: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gray400,
+    marginTop: 1,
   },
   actions: {
     flexDirection: 'row',

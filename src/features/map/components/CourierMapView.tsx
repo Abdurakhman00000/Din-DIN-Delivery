@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { BISHKEK_CENTER } from '@/features/map/constants/bishkek';
+import { MAPGL_API_KEY, MAPGL_ROUTING_URL } from '@/features/map/constants/mapgl';
 import type { MapCoordinate } from '@/features/map/types';
 
 export type CourierMapViewRef = {
@@ -13,13 +14,30 @@ export type CourierMapViewRef = {
   clearRoute: () => void;
 };
 
+/** Реальные distance/duration от 2ГИС Routing API для текущего
+ * показанного маршрута — null, пока не пришёл ответ (см. showRoute) или
+ * если запрос не удался (тогда экран остаётся на приближении "по
+ * прямой", см. utils/geo.ts). */
+export type RouteInfo = { distanceM: number; durationS: number };
+
 type CourierMapViewProps = {
-  /** false — WebView и Leaflet не реагируют на жесты (шторки поверх карты). */
+  /** false — WebView и карта не реагируют на жесты (шторки поверх карты). */
   interactionEnabled?: boolean;
+  /** Тип транспорта курьера — определяет, каким видом маршрута
+   * (пешеходным/самокатным) 2ГИС Routing API считает путь. Меняется
+   * практически никогда (это профильное поле курьера, не переключатель
+   * в моменте) — HTML карты пересобирается при смене, это ожидаемо. */
+  vehicle: 'foot' | 'scooter';
+  /** Зовётся при каждом обновлении реального маршрута — null, если ответ
+   * ещё не пришёл или не удался (см. RouteInfo). */
+  onRouteInfo?: (info: RouteInfo | null) => void;
 };
 
-function buildMockMapHtml() {
+function buildMapHtml(vehicle: 'foot' | 'scooter') {
   const { latitude, longitude } = BISHKEK_CENTER;
+  // 2ГИС принимает pedestrian/scooter (не "foot" — проверено напрямую,
+  // "foot" отдаёт 400 "transports is incorrect").
+  const transport = vehicle === 'scooter' ? 'scooter' : 'pedestrian';
 
   return `
 <!DOCTYPE html>
@@ -29,11 +47,6 @@ function buildMockMapHtml() {
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
       html, body, #map {
         height: 100%;
@@ -42,94 +55,261 @@ function buildMockMapHtml() {
         padding: 0;
         background: #e5e7eb;
       }
-      .leaflet-control-container { display: none !important; }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    <script src="https://mapgl.2gis.com/api/js/v1?callback=__initMap" async defer></script>
     <script>
-      window.map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false,
-      }).setView([${latitude}, ${longitude}], 13);
+      var MAPGL_KEY = ${JSON.stringify(MAPGL_API_KEY)};
+      var ROUTING_URL = ${JSON.stringify(MAPGL_ROUTING_URL)};
+      var TRANSPORT = ${JSON.stringify(transport)};
+      var CENTER = [${longitude}, ${latitude}];
 
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '',
-      }).addTo(window.map);
-
-      window.routeLayer = null;
-
-      window.clearRoute = function () {
-        if (window.routeLayer) {
-          window.map.removeLayer(window.routeLayer);
-          window.routeLayer = null;
+      // Карта грузится асинхронно (внешний скрипт по сети) — RN может
+      // вызвать showRoute/clearRoute через ref раньше, чем __initMap
+      // отработает. Пока карты нет, любой вызов откладывается и
+      // проигрывается один раз, как только она готова (только самый
+      // последний — более ранний всё равно устарел).
+      window.__mapReady = false;
+      window.__pendingCall = null;
+      function callWhenReady(fn, args) {
+        if (window.__mapReady) {
+          fn.apply(null, args);
+        } else {
+          window.__pendingCall = { fn: fn, args: args };
         }
-      };
+      }
 
-      window.showRoute = function (from, to, endLabel) {
-        window.clearRoute();
-        window.routeLayer = L.layerGroup().addTo(window.map);
-        endLabel = endLabel || 'A';
+      function svgIcon(svg) {
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      }
+      var COURIER_ICON = svgIcon(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">' +
+        '<circle cx="18" cy="18" r="15" fill="#16A34A" stroke="#fff" stroke-width="3"/>' +
+        '<path d="M18 9 L25 25 L18 20.5 L11 25 Z" fill="#fff"/>' +
+        '</svg>'
+      );
+      var POINT_ICON = svgIcon(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">' +
+        '<circle cx="14" cy="14" r="12" fill="#fff" stroke="#16A34A" stroke-width="2.5"/>' +
+        '</svg>'
+      );
 
-        var mid = [
-          (from[0] + to[0]) / 2 + 0.004,
-          (from[1] + to[1]) / 2 - 0.003
-        ];
-
-        L.polyline([from, mid, to], {
-          color: '#16A34A',
-          weight: 4,
-          dashArray: '10 10',
-        }).addTo(window.routeLayer);
-
-        function pointIcon(label) {
-          return L.divIcon({
-            className: '',
-            html: '<div style="width:28px;height:28px;border-radius:14px;background:#fff;border:2px solid #16A34A;display:flex;align-items:center;justify-content:center;font:700 13px sans-serif;color:#111827">' + label + '</div>',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-          });
-        }
-
-        var courierIcon = L.divIcon({
-          className: '',
-          html: '<div style="width:36px;height:36px;border-radius:18px;background:#16A34A;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;"><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid #fff;"></div></div>',
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
+      window.pointMarkers = [];
+      function clearMarkers() {
+        window.pointMarkers.forEach(function (m) {
+          try { m.destroy(); } catch (e) {}
         });
+        window.pointMarkers = [];
+      }
+      function makePointMarker(lon, lat, text) {
+        return new mapgl.Marker(window.map, {
+          coordinates: [lon, lat],
+          icon: POINT_ICON,
+          label: { text: text, fontSize: 13, color: '#111827' },
+        });
+      }
+      function makeCourierMarker(lon, lat) {
+        return new mapgl.Marker(window.map, { coordinates: [lon, lat], icon: COURIER_ICON });
+      }
+
+      window.routeSource = null;
+      function clearRouteLine() {
+        if (window.routeSource) {
+          try { window.map.removeLayer('route-line'); } catch (e) {}
+          try { window.map.removeLayer('route-line-halo'); } catch (e) {}
+          try { window.routeSource.destroy(); } catch (e) {}
+          window.routeSource = null;
+        }
+      }
+      function drawRouteLine(coords) {
+        clearRouteLine();
+        var data = {
+          type: 'Feature',
+          properties: { routeId: 'active' },
+          geometry: { type: 'LineString', coordinates: coords },
+        };
+        try {
+          window.routeSource = new mapgl.GeoJsonSource(window.map, { data: data });
+          var filter = ['match', ['sourceAttr', 'routeId'], ['active'], true, false];
+          // Белая подложка снизу + зелёная линия сверху — тот же приём,
+          // что раньше давал dashArray в Leaflet-варианте, просто другой
+          // визуальный язык (сплошная линия с halo вместо пунктира).
+          window.map.addLayer({
+            id: 'route-line-halo',
+            type: 'line',
+            filter: filter,
+            style: { color: '#ffffff', width: 8 },
+          });
+          window.map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            filter: filter,
+            style: { color: '#16A34A', width: 4 },
+          });
+        } catch (e) {
+          console.warn('drawRouteLine failed', e);
+        }
+      }
+
+      // Точки из ответа Routing API приходят как WKT LINESTRING внутри
+      // maneuvers[].outcoming_path.geometry[].selection — склеиваем все
+      // сегменты подряд в один путь.
+      function parseLineString(wkt) {
+        var inner = wkt.slice(wkt.indexOf('(') + 1, wkt.lastIndexOf(')'));
+        return inner.split(',').map(function (pair) {
+          var xy = pair.trim().split(' ');
+          return [parseFloat(xy[0]), parseFloat(xy[1])];
+        });
+      }
+      function extractRouteCoords(result) {
+        var coords = [];
+        var maneuvers = result.maneuvers || [];
+        for (var i = 0; i < maneuvers.length; i++) {
+          var path = maneuvers[i].outcoming_path;
+          if (!path || !path.geometry) continue;
+          for (var j = 0; j < path.geometry.length; j++) {
+            var wkt = path.geometry[j].selection;
+            if (!wkt) continue;
+            coords = coords.concat(parseLineString(wkt));
+          }
+        }
+        return coords;
+      }
+
+      function fetchRoute(fromLon, fromLat, toLon, toLat) {
+        return fetch(ROUTING_URL + '?key=' + MAPGL_KEY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            points: [
+              { type: 'stop', lon: fromLon, lat: fromLat },
+              { type: 'stop', lon: toLon, lat: toLat },
+            ],
+            transport: TRANSPORT,
+            route_mode: 'fastest',
+            locale: 'ru',
+          }),
+        }).then(function (res) { return res.json(); });
+      }
+
+      function postToRN(message) {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(message));
+        }
+      }
+
+      window.__routeRequestId = 0;
+
+      function realShowRoute(fromLon, fromLat, toLon, toLat, endLabel) {
+        var requestId = ++window.__routeRequestId;
+        endLabel = endLabel || 'A';
+        clearMarkers();
+
+        // Новый запрос маршрута — прошлые distance/duration (например, от
+        // предыдущей фазы to_pickup) больше не про эту пару точек. Сразу
+        // сбрасываем их в RN, чтобы экран откатился на честное "по прямой"
+        // на время загрузки, а не показывал одну-две секунды чужое число.
+        postToRN({ type: 'routeInfo', distanceM: null, durationS: null });
+
+        // Мгновенная линия "по прямой" для обратной связи, пока настоящий
+        // маршрут не пришёл — так же, как и раньше делал мок.
+        drawRouteLine([[fromLon, fromLat], [toLon, toLat]]);
 
         if (endLabel === 'B') {
-          L.marker(from, { icon: pointIcon('A') }).addTo(window.routeLayer);
-          L.marker(to, { icon: pointIcon('B') }).addTo(window.routeLayer);
+          window.pointMarkers.push(makePointMarker(fromLon, fromLat, 'A'));
+          window.pointMarkers.push(makePointMarker(toLon, toLat, 'B'));
         } else {
-          L.marker(to, { icon: pointIcon('A') }).addTo(window.routeLayer);
-          L.marker(from, { icon: courierIcon }).addTo(window.routeLayer);
+          window.pointMarkers.push(makePointMarker(toLon, toLat, 'A'));
+          window.pointMarkers.push(makeCourierMarker(fromLon, fromLat));
         }
 
-        window.map.fitBounds([from, to], { padding: [50, 50] });
+        try {
+          window.map.fitBounds(
+            [
+              [Math.min(fromLon, toLon), Math.min(fromLat, toLat)],
+              [Math.max(fromLon, toLon), Math.max(fromLat, toLat)],
+            ],
+            { padding: 60 },
+          );
+        } catch (e) {
+          console.warn('fitBounds failed', e);
+        }
+
+        fetchRoute(fromLon, fromLat, toLon, toLat)
+          .then(function (json) {
+            if (requestId !== window.__routeRequestId) return; // курьер уже пошёл дальше
+            var result = json && json.result && json.result[0];
+            if (!result) throw new Error((json && json.message) || 'no route result');
+            var coords = extractRouteCoords(result);
+            if (coords.length > 1) {
+              drawRouteLine(coords);
+            }
+            postToRN({
+              type: 'routeInfo',
+              distanceM: result.total_distance,
+              durationS: result.total_duration,
+            });
+          })
+          .catch(function (e) {
+            if (requestId !== window.__routeRequestId) return;
+            console.warn('2GIS routing failed, staying on straight-line fallback', e);
+            postToRN({ type: 'routeError' });
+          });
+      }
+
+      function realClearRoute() {
+        window.__routeRequestId++; // гасит ответ ещё летящего запроса
+        clearRouteLine();
+        clearMarkers();
+        window.map.setCenter(CENTER);
+        window.map.setZoom(13);
+        postToRN({ type: 'routeInfo', distanceM: null, durationS: null });
+      }
+
+      window.showRoute = function (fromLon, fromLat, toLon, toLat, endLabel) {
+        callWhenReady(realShowRoute, [fromLon, fromLat, toLon, toLat, endLabel]);
+      };
+      window.clearRoute = function () {
+        callWhenReady(realClearRoute, []);
+      };
+      window.zoomIn = function () {
+        callWhenReady(function () { window.map.setZoom(window.map.getZoom() + 1); }, []);
+      };
+      window.zoomOut = function () {
+        callWhenReady(function () { window.map.setZoom(window.map.getZoom() - 1); }, []);
+      };
+      window.centerOnBishkek = function () {
+        callWhenReady(function () {
+          window.map.setCenter(CENTER);
+          window.map.setZoom(13);
+        }, []);
+      };
+      window.setMapInteractive = function () {
+        // Основная защита от жестов под шторками — pointerEvents="none"
+        // на самом WebView, RN-уровня (см. CourierMapView.tsx) — она
+        // блокирует тачи независимо от карты под ним. Дополнительного
+        // API карты для точечного включения/выключения жестов здесь
+        // сознательно не задействуем — RN-барьера достаточно.
       };
 
-      window.setMapInteractive = function (enabled) {
-        if (!window.map) {
-          return;
+      window.__initMap = function () {
+        try {
+          window.map = new mapgl.Map('map', {
+            center: CENTER,
+            zoom: 13,
+            key: MAPGL_KEY,
+          });
+          window.__mapReady = true;
+          if (window.__pendingCall) {
+            var call = window.__pendingCall;
+            window.__pendingCall = null;
+            call.fn.apply(null, call.args);
+          }
+        } catch (e) {
+          console.warn('2GIS map init failed', e);
         }
-        var parts = [
-          window.map.dragging,
-          window.map.touchZoom,
-          window.map.doubleClickZoom,
-          window.map.scrollWheelZoom,
-          window.map.boxZoom,
-        ];
-        parts.forEach(function (handler) {
-          if (!handler) {
-            return;
-          }
-          if (enabled) {
-            handler.enable();
-          } else {
-            handler.disable();
-          }
-        });
       };
     </script>
   </body>
@@ -138,59 +318,83 @@ function buildMockMapHtml() {
 }
 
 export const CourierMapView = forwardRef<CourierMapViewRef, CourierMapViewProps>(
-  function CourierMapView({ interactionEnabled = true }, ref) {
-  const webViewRef = useRef<WebView>(null);
-  const mapHtml = useMemo(() => buildMockMapHtml(), []);
+  function CourierMapView({ interactionEnabled = true, vehicle, onRouteInfo }, ref) {
+    const webViewRef = useRef<WebView>(null);
+    const mapHtml = useMemo(() => buildMapHtml(vehicle), [vehicle]);
 
-  useEffect(() => {
-    webViewRef.current?.injectJavaScript(
-      `window.setMapInteractive(${interactionEnabled ? 'true' : 'false'}); true;`,
+    useEffect(() => {
+      webViewRef.current?.injectJavaScript(
+        `window.setMapInteractive(${interactionEnabled ? 'true' : 'false'}); true;`,
+      );
+    }, [interactionEnabled]);
+
+    useImperativeHandle(ref, () => ({
+      zoomIn: () => {
+        webViewRef.current?.injectJavaScript('window.zoomIn(); true;');
+      },
+      zoomOut: () => {
+        webViewRef.current?.injectJavaScript('window.zoomOut(); true;');
+      },
+      centerOnBishkek: () => {
+        webViewRef.current?.injectJavaScript('window.centerOnBishkek(); true;');
+      },
+      showRoute: (from, to, endLabel) => {
+        const label = JSON.stringify(endLabel ?? 'A');
+        webViewRef.current?.injectJavaScript(
+          `window.showRoute(${from.longitude},${from.latitude},${to.longitude},${to.latitude},${label}); true;`,
+        );
+      },
+      clearRoute: () => {
+        webViewRef.current?.injectJavaScript('window.clearRoute(); true;');
+      },
+    }));
+
+    function handleMessage(event: WebViewMessageEvent) {
+      if (!onRouteInfo) {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.nativeEvent.data) as {
+          type?: string;
+          distanceM?: number | null;
+          durationS?: number | null;
+        };
+        if (
+          data.type === 'routeInfo' &&
+          typeof data.distanceM === 'number' &&
+          typeof data.durationS === 'number'
+        ) {
+          onRouteInfo({ distanceM: data.distanceM, durationS: data.durationS });
+        } else if (data.type === 'routeError' || data.type === 'routeInfo') {
+          // routeError, или routeInfo с distanceM/durationS: null (clearRoute) —
+          // в обоих случаях откатываемся на приближение "по прямой" в
+          // ActiveTripCard, а не показываем устаревшее число.
+          onRouteInfo(null);
+        }
+      } catch {
+        // Сообщение не по протоколу — игнорируем, не роняем карту из-за него.
+      }
+    }
+
+    return (
+      <WebView
+        ref={webViewRef}
+        source={{ html: mapHtml }}
+        style={styles.map}
+        pointerEvents={interactionEnabled ? 'auto' : 'none'}
+        scrollEnabled={false}
+        bounces={false}
+        overScrollMode="never"
+        javaScriptEnabled
+        domStorageEnabled
+        originWhitelist={['*']}
+        setBuiltInZoomControls={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        onMessage={handleMessage}
+      />
     );
-  }, [interactionEnabled]);
-
-  useImperativeHandle(ref, () => ({
-    zoomIn: () => {
-      webViewRef.current?.injectJavaScript('window.map.zoomIn(); true;');
-    },
-    zoomOut: () => {
-      webViewRef.current?.injectJavaScript('window.map.zoomOut(); true;');
-    },
-    centerOnBishkek: () => {
-      webViewRef.current?.injectJavaScript(
-        `window.map.setView([${BISHKEK_CENTER.latitude}, ${BISHKEK_CENTER.longitude}], 13); true;`,
-      );
-    },
-    showRoute: (from, to, endLabel) => {
-      const label = JSON.stringify(endLabel ?? 'A');
-      webViewRef.current?.injectJavaScript(
-        `window.showRoute([${from.latitude},${from.longitude}],[${to.latitude},${to.longitude}],${label}); true;`,
-      );
-    },
-    clearRoute: () => {
-      webViewRef.current?.injectJavaScript(
-        `window.clearRoute(); window.map.setView([${BISHKEK_CENTER.latitude}, ${BISHKEK_CENTER.longitude}], 13); true;`,
-      );
-    },
-  }));
-
-  return (
-    <WebView
-      ref={webViewRef}
-      source={{ html: mapHtml }}
-      style={styles.map}
-      pointerEvents={interactionEnabled ? 'auto' : 'none'}
-      scrollEnabled={false}
-      bounces={false}
-      overScrollMode="never"
-      javaScriptEnabled
-      domStorageEnabled
-      originWhitelist={['*']}
-      setBuiltInZoomControls={false}
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-},
+  },
 );
 
 const styles = StyleSheet.create({
