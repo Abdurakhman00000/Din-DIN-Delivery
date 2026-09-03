@@ -1,14 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '@/constants/theme';
+import { COLORS, DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import type { DeliveryItem } from '@/features/deliveries/types';
 
 type ChecklistSheetProps = {
   items: DeliveryItem[];
   displayNumber: string;
   loading: boolean;
+  /** Сообщение backend'а на 422 (чек-лист неполный/не совпал состав)
+   * или 409 (заказ уже не в том статусе) — null, пока ошибки нет. */
+  error?: string | null;
   onConfirm: (checked: Record<string, boolean>) => void;
   onCancel: () => void;
 };
@@ -27,14 +33,30 @@ export function ChecklistSheet({
   items,
   displayNumber,
   loading,
+  error,
   onConfirm,
   onCancel,
 }: ChecklistSheetProps) {
+  const insets = useSafeAreaInsets();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const allChecked = items.length > 0 && items.every((item) => checked[item.id]);
 
+  function toggle(id: string) {
+    void Haptics.selectionAsync();
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function handleConfirm() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onConfirm(checked);
+  }
+
   return (
-    <View style={styles.sheet}>
+    <BlurView
+      intensity={70}
+      tint="dark"
+      style={[styles.sheet, DARK_SHADOW.card, { paddingBottom: insets.bottom + SPACING.lg }]}
+    >
       <View style={styles.handle} />
       <Text style={styles.title}>Сверьте заказ №{displayNumber}</Text>
       <Text style={styles.subtitle}>Отметьте всё, что забираете — иначе заказ не отметится</Text>
@@ -43,13 +65,9 @@ export function ChecklistSheet({
         {items.map((item) => {
           const isChecked = !!checked[item.id];
           return (
-            <Pressable
-              key={item.id}
-              style={styles.row}
-              onPress={() => setChecked((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-            >
+            <Pressable key={item.id} style={styles.row} onPress={() => toggle(item.id)}>
               <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
-                {isChecked ? <Ionicons name="checkmark" size={14} color={COLORS.white} /> : null}
+                {isChecked ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
               </View>
               <Text style={styles.itemName}>{item.dish_name}</Text>
               <Text style={styles.itemQty}>×{item.quantity}</Text>
@@ -58,17 +76,24 @@ export function ChecklistSheet({
         })}
       </View>
 
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle" size={16} color="#FCA5A5" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
       <Pressable
         style={[styles.confirm, !allChecked && styles.confirmDisabled]}
         disabled={!allChecked || loading}
-        onPress={() => onConfirm(checked)}
+        onPress={handleConfirm}
       >
         <Text style={styles.confirmText}>{loading ? 'Отправляем…' : 'Забрал'}</Text>
       </Pressable>
       <Pressable onPress={onCancel} style={styles.cancel} disabled={loading}>
         <Text style={styles.cancelText}>Отмена</Text>
       </Pressable>
-    </View>
+    </BlurView>
   );
 }
 
@@ -78,49 +103,53 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 8,
+    backgroundColor: DARK.glass,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
+    borderBottomWidth: 0,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    overflow: 'hidden',
   },
   handle: {
     alignSelf: 'center',
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
-    marginBottom: 12,
+    backgroundColor: DARK.hairlineStrong,
+    marginBottom: SPACING.md,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title,
+    color: DARK.textPrimary,
   },
   subtitle: {
-    fontSize: 13,
-    color: COLORS.gray400,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textSecondary,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   list: {
-    marginBottom: 16,
+    marginBottom: SPACING.sm,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
+    gap: SPACING.md,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
+    borderBottomColor: DARK.hairline,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairlineStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -130,36 +159,56 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.gray900,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textPrimary,
   },
   itemQty: {
-    fontSize: 14,
-    color: COLORS.gray400,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textMuted,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: DARK.dangerGlow,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.35)',
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: '#FCA5A5',
+    lineHeight: 18,
   },
   confirm: {
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.lg,
     alignItems: 'center',
+    minHeight: 56,
+    justifyContent: 'center',
   },
   confirmDisabled: {
-    // gray400, не gray100 — белый текст на gray100 почти не читается
-    backgroundColor: COLORS.gray400,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   confirmText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.bodyLarge,
   },
   cancel: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
   },
   cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.gray400,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textMuted,
   },
 });

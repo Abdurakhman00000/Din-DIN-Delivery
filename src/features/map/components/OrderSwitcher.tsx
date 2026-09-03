@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { COLORS, SHADOW } from '@/constants/theme';
+import { DARK, DARK_SHADOW, FONTS, RADIUS, TYPE_SCALE } from '@/constants/theme';
 import type { ActiveDelivery } from '@/features/deliveries/types';
 
 type OrderSwitcherProps = {
@@ -20,15 +22,20 @@ export function OrderSwitcher({ items, selectedId, onSelect }: OrderSwitcherProp
     return null;
   }
 
+  function handleSelect(id: string) {
+    void Haptics.selectionAsync();
+    onSelect(id);
+  }
+
   return (
-    <View style={[styles.row, SHADOW.soft]}>
+    <BlurView intensity={50} tint="dark" style={[styles.row, DARK_SHADOW.button]}>
       {items.map((item) => {
         const isSelected = item.id === selectedId;
         return (
           <Pressable
             key={item.id}
             style={[styles.pill, isSelected && styles.pillSelected]}
-            onPress={() => onSelect(item.id)}
+            onPress={() => handleSelect(item.id)}
           >
             <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
               №{item.display_number}
@@ -36,33 +43,36 @@ export function OrderSwitcher({ items, selectedId, onSelect }: OrderSwitcherProp
           </Pressable>
         );
       })}
-    </View>
+    </BlurView>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: 6,
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
+    gap: 4,
+    backgroundColor: DARK.glass,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
     padding: 4,
     alignSelf: 'flex-start',
+    overflow: 'hidden',
   },
   pill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm,
   },
   pillSelected: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#16A34A',
   },
   pillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.gray600,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textSecondary,
   },
   pillTextSelected: {
-    color: COLORS.white,
+    color: DARK.textPrimary,
   },
 });

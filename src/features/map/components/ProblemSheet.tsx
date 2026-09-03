@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '@/constants/theme';
+import { DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import type { ProblemType } from '@/features/deliveries/types';
 
 const PROBLEM_LABELS: { type: ProblemType; label: string }[] = [
@@ -16,6 +19,9 @@ const PROBLEM_LABELS: { type: ProblemType; label: string }[] = [
 type ProblemSheetProps = {
   displayNumber: string;
   loading: boolean;
+  /** Сообщение backend'а на 409 (заказ уже не в статусе, из которого
+   * можно сообщить о проблеме) — null, пока ошибки нет. */
+  error?: string | null;
   onConfirm: (type: ProblemType, comment: string) => void;
   onCancel: () => void;
 };
@@ -27,12 +33,36 @@ type ProblemSheetProps = {
  * четыре закрывают заказ для курьера сразу (см. MapScreen.tsx —
  * доставка пропадает из GET /active после любого из них).
  */
-export function ProblemSheet({ displayNumber, loading, onConfirm, onCancel }: ProblemSheetProps) {
+export function ProblemSheet({
+  displayNumber,
+  loading,
+  error,
+  onConfirm,
+  onCancel,
+}: ProblemSheetProps) {
+  const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<ProblemType | null>(null);
   const [comment, setComment] = useState('');
 
+  function handleSelect(type: ProblemType) {
+    void Haptics.selectionAsync();
+    setSelected(type);
+  }
+
+  function handleConfirm() {
+    if (!selected) {
+      return;
+    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onConfirm(selected, comment.trim());
+  }
+
   return (
-    <View style={styles.sheet}>
+    <BlurView
+      intensity={70}
+      tint="dark"
+      style={[styles.sheet, DARK_SHADOW.card, { paddingBottom: insets.bottom + SPACING.lg }]}
+    >
       <View style={styles.handle} />
       <Text style={styles.title}>Проблема с заказом №{displayNumber}</Text>
       <Text style={styles.subtitle}>Выберите, что случилось</Text>
@@ -44,7 +74,7 @@ export function ProblemSheet({ displayNumber, loading, onConfirm, onCancel }: Pr
             <Pressable
               key={item.type}
               style={[styles.row, isSelected && styles.rowSelected]}
-              onPress={() => setSelected(item.type)}
+              onPress={() => handleSelect(item.type)}
             >
               <View style={[styles.radio, isSelected && styles.radioSelected]}>
                 {isSelected ? <View style={styles.radioDot} /> : null}
@@ -58,24 +88,31 @@ export function ProblemSheet({ displayNumber, loading, onConfirm, onCancel }: Pr
       <TextInput
         style={styles.input}
         placeholder="Комментарий (необязательно)"
-        placeholderTextColor={COLORS.gray400}
+        placeholderTextColor={DARK.textMuted}
         value={comment}
         onChangeText={setComment}
         multiline
       />
 
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle" size={16} color="#FCA5A5" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
       <Pressable
         style={[styles.confirm, !selected && styles.confirmDisabled]}
         disabled={!selected || loading}
-        onPress={() => selected && onConfirm(selected, comment.trim())}
+        onPress={handleConfirm}
       >
-        <Ionicons name="alert-circle-outline" size={18} color={COLORS.white} />
+        <Ionicons name="alert-circle" size={18} color="#FFFFFF" />
         <Text style={styles.confirmText}>{loading ? 'Отправляем…' : 'Сообщить'}</Text>
       </Pressable>
       <Pressable onPress={onCancel} style={styles.cancel} disabled={loading}>
         <Text style={styles.cancelText}>Отмена</Text>
       </Pressable>
-    </View>
+    </BlurView>
   );
 }
 
@@ -85,83 +122,107 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 8,
+    backgroundColor: DARK.glass,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
+    borderBottomWidth: 0,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    overflow: 'hidden',
   },
   handle: {
     alignSelf: 'center',
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
-    marginBottom: 12,
+    backgroundColor: DARK.hairlineStrong,
+    marginBottom: SPACING.md,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title,
+    color: DARK.textPrimary,
   },
   subtitle: {
-    fontSize: 13,
-    color: COLORS.gray400,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textSecondary,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   list: {
-    gap: 8,
-    marginBottom: 12,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
     paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairline,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   rowSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#ECFDF3',
+    borderColor: '#22C55E',
+    backgroundColor: DARK.primaryGlow,
   },
   radio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairlineStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioSelected: {
-    borderColor: COLORS.primary,
+    borderColor: '#22C55E',
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#22C55E',
   },
   rowText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.gray900,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderColor: DARK.hairline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 10,
-    fontSize: 14,
-    color: COLORS.gray900,
+    fontFamily: FONTS.regular,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
     minHeight: 44,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: DARK.dangerGlow,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.35)',
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: '#FCA5A5',
+    lineHeight: 18,
   },
   confirm: {
     flexDirection: 'row',
@@ -169,25 +230,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#DC2626',
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.lg,
+    minHeight: 56,
   },
   confirmDisabled: {
-    // gray400, не gray100 — белый текст на gray100 почти не читается
-    backgroundColor: COLORS.gray400,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   confirmText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.bodyLarge,
   },
   cancel: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
   },
   cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.gray400,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textMuted,
   },
 });

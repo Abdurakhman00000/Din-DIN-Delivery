@@ -9,17 +9,22 @@ import { StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS, SHADOW } from '@/constants/theme';
+import { COLORS, DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 
 type ToastBannerProps = {
   visible: boolean;
   message: string;
+  /** 'success' (по умолчанию) — доставлено/проблема отправлена и т.п.
+   * 'error' — не удалось выполнить действие (см. handleGoOnline в
+   * MapScreen.tsx: раньше такие ошибки не показывались вообще). */
+  tone?: 'success' | 'error';
 };
 
-export function ToastBanner({ visible, message }: ToastBannerProps) {
+export function ToastBanner({ visible, message, tone = 'success' }: ToastBannerProps) {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(80);
   const opacity = useSharedValue(0);
+  const toneColor = tone === 'error' ? DARK.danger : COLORS.primary;
 
   useEffect(() => {
     translateY.value = withTiming(visible ? 0 : 80, { duration: 280 });
@@ -34,7 +39,12 @@ export function ToastBanner({ visible, message }: ToastBannerProps) {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.toast, SHADOW.soft, { bottom: insets.bottom + 24 }, style]}
+      style={[
+        styles.toast,
+        DARK_SHADOW.glow(toneColor),
+        { backgroundColor: toneColor, bottom: insets.bottom + 24 },
+        style,
+      ]}
     >
       <Text style={styles.text}>{message}</Text>
     </Animated.View>
@@ -44,18 +54,17 @@ export function ToastBanner({ visible, message }: ToastBannerProps) {
 const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md + 2,
+    paddingHorizontal: SPACING.lg,
     zIndex: 20,
   },
   text: {
     textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.white,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: '#FFFFFF',
   },
 });

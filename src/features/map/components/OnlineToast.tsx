@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
+import { BlurView } from 'expo-blur';
 import { StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS, SHADOW } from '@/constants/theme';
+import { DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 
 type OnlineToastProps = {
   visible: boolean;
   message?: string;
 };
+
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 export function OnlineToast({
   visible,
@@ -29,32 +32,35 @@ export function OnlineToast({
   }));
 
   return (
-    <Animated.View
+    <AnimatedBlurView
+      intensity={60}
+      tint="dark"
       pointerEvents="none"
-      style={[styles.toast, SHADOW.soft, { top: insets.top + 64 }, style]}
+      style={[styles.toast, DARK_SHADOW.button, { top: insets.top + 64 }, style]}
     >
       <Text style={styles.text}>{message}</Text>
-    </Animated.View>
+    </AnimatedBlurView>
   );
 }
 
 const styles = StyleSheet.create({
   toast: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    backgroundColor: DARK.glass,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: 'rgba(34, 197, 94, 0.35)',
+    overflow: 'hidden',
     zIndex: 20,
   },
   text: {
     textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray900,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.body,
+    color: DARK.textPrimary,
   },
 });

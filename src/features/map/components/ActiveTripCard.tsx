@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORS, SHADOW } from '@/constants/theme';
+import { DARK, DARK_SHADOW, FONTS, RADIUS, SPACING, TYPE_SCALE } from '@/constants/theme';
 import type { ActiveDelivery } from '@/features/deliveries/types';
 import { formatDistanceKm, formatDurationMin, straightLineDistanceKm } from '@/utils/geo';
 
@@ -55,21 +57,38 @@ export function ActiveTripCard({
   const durationLabel = routeInfo ? formatDurationMin(routeInfo.durationS) : null;
 
   const bundleLabel =
-    delivery.bundle_id && delivery.bundle_position
-      ? `Заказ ${delivery.bundle_position} из 2 · `
-      : '';
+    delivery.bundle_id && delivery.bundle_position ? `${delivery.bundle_position}/2 · ` : '';
 
   const canCall = !isToPickup && !!delivery.customer_phone;
 
+  function handleCall() {
+    if (!delivery.customer_phone) {
+      return;
+    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(`tel:${delivery.customer_phone}`);
+  }
+
+  function handleProblem() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onProblemPress();
+  }
+
   return (
-    <View style={[styles.card, SHADOW.soft]}>
+    <BlurView intensity={54} tint="dark" style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.info}>
-          <Text style={styles.status}>
-            {bundleLabel}
-            {isToPickup ? 'Еду за заказом' : 'Еду к клиенту'} · №{delivery.display_number}
+          <View style={styles.statusRow}>
+            <View style={[styles.statusDot, isToPickup ? styles.statusDotPickup : null]} />
+            <Text style={styles.status}>
+              {bundleLabel}
+              {isToPickup ? 'Еду за заказом' : 'Еду к клиенту'}
+            </Text>
+            <Text style={styles.orderNumber}>№{delivery.display_number}</Text>
+          </View>
+          <Text style={styles.address} numberOfLines={2}>
+            {address}
           </Text>
-          <Text style={styles.address}>{address}</Text>
         </View>
         {distanceLabel ? (
           <View style={styles.eta}>
@@ -81,75 +100,106 @@ export function ActiveTripCard({
 
       <View style={styles.actions}>
         <Pressable
-          style={[styles.action, !canCall && styles.actionDisabled]}
+          style={({ pressed }) => [
+            styles.action,
+            !canCall && styles.actionDisabled,
+            pressed && canCall && styles.actionPressed,
+          ]}
           disabled={!canCall}
-          onPress={() => {
-            if (delivery.customer_phone) {
-              Linking.openURL(`tel:${delivery.customer_phone}`);
-            }
-          }}
+          onPress={handleCall}
         >
-          <Ionicons
-            name="call-outline"
-            size={16}
-            color={canCall ? COLORS.gray900 : COLORS.gray400}
-          />
+          <Ionicons name="call" size={16} color={canCall ? DARK.textPrimary : DARK.textMuted} />
           <Text style={[styles.actionText, !canCall && styles.actionTextDisabled]}>Позвонить</Text>
         </Pressable>
-        <Pressable style={styles.action} onPress={onProblemPress}>
-          <Ionicons name="alert-circle-outline" size={16} color={COLORS.gray900} />
-          <Text style={styles.actionText}>Проблема</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.action,
+            styles.actionDanger,
+            pressed && styles.actionPressed,
+          ]}
+          onPress={handleProblem}
+        >
+          <Ionicons name="alert-circle" size={16} color={DARK.danger} />
+          <Text style={[styles.actionText, styles.actionTextDanger]}>Проблема</Text>
         </Pressable>
       </View>
-    </View>
+    </BlurView>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    padding: 14,
+    backgroundColor: DARK.glass,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DARK.hairline,
+    overflow: 'hidden',
+    ...DARK_SHADOW.card,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   info: {
     flex: 1,
   },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: DARK.primaryGlow,
+    // На "еду к клиенту" — сплошная точка (уже забрал, дело почти
+    // сделано); на "еду за заказом" — приглушённая (в процессе).
+  },
+  statusDotPickup: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+  },
   status: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginBottom: 4,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.label,
+    color: '#4ADE80',
+    letterSpacing: 0.1,
+  },
+  orderNumber: {
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textMuted,
+    marginLeft: 'auto',
   },
   address: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.gray900,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.title,
+    color: DARK.textPrimary,
+    letterSpacing: -0.2,
   },
   eta: {
     alignItems: 'flex-end',
   },
   etaDistance: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.gray600,
+    fontFamily: FONTS.bold,
+    fontSize: TYPE_SCALE.bodyLarge,
+    color: DARK.textPrimary,
   },
   etaDuration: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.gray400,
-    marginTop: 1,
+    fontFamily: FONTS.medium,
+    fontSize: TYPE_SCALE.caption,
+    color: DARK.textMuted,
+    marginTop: 2,
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   action: {
     flex: 1,
@@ -157,19 +207,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: COLORS.gray100,
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  actionDanger: {
+    backgroundColor: DARK.dangerGlow,
+    borderColor: 'rgba(248,113,113,0.35)',
+  },
+  actionPressed: {
+    opacity: 0.7,
   },
   actionDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gray900,
+    fontFamily: FONTS.semibold,
+    fontSize: TYPE_SCALE.label,
+    color: DARK.textPrimary,
+  },
+  actionTextDanger: {
+    color: '#FCA5A5',
   },
   actionTextDisabled: {
-    color: COLORS.gray400,
+    color: DARK.textMuted,
   },
 });

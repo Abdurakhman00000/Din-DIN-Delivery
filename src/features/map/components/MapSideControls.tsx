@@ -1,17 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { COLORS } from '@/constants/theme';
+import { DARK, SPACING } from '@/constants/theme';
 
-import { MapCircleButton, MapFloatingPanel } from './MapFloatingButton';
-
-type MapLeftControlsProps = {
-  onSearchPress?: () => void;
-};
-
-export function MapLeftControls({ onSearchPress }: MapLeftControlsProps) {
-  return <MapCircleButton icon="search-outline" onPress={onSearchPress} />;
-}
+import { MapCircleButton, MapFloatingDivider, MapFloatingPanel } from './MapFloatingButton';
 
 type MapRightControlsProps = {
   onZoomIn?: () => void;
@@ -19,27 +12,52 @@ type MapRightControlsProps = {
   onLocatePress?: () => void;
 };
 
+/**
+ * Зум + "моя позиция" — низ-право, в зоне большого пальца, как во всех
+ * настоящих картографических приложениях (Google Maps/Uber/Yandex).
+ * Раньше это плавало посередине левого/правого края экрана — ничем не
+ * привязанное ни к низу, ни к верху место, куда рука не тянется
+ * естественным движением. Кнопка поиска отсюда убрана совсем — она вела
+ * на шторку с захардкоженным мок-списком мест (MOCK_PLACES), не имеющую
+ * отношения к реальному потоку курьера (заказ не выбирают, его
+ * назначают — искать тут физически нечего).
+ */
 export function MapRightControls({ onZoomIn, onZoomOut, onLocatePress }: MapRightControlsProps) {
+  function handleZoom(fn?: () => void) {
+    return () => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      fn?.();
+    };
+  }
+
   return (
     <View style={styles.container}>
       <MapFloatingPanel>
-        <Pressable onPress={onZoomIn} style={styles.zoomButton} accessibilityLabel="Увеличить">
-          <Ionicons name="add" size={22} color={COLORS.gray900} />
+        <Pressable
+          onPress={handleZoom(onZoomIn)}
+          style={styles.zoomButton}
+          accessibilityLabel="Увеличить"
+        >
+          <Ionicons name="add" size={20} color={DARK.textPrimary} />
         </Pressable>
-        <View style={styles.zoomDivider} />
-        <Pressable onPress={onZoomOut} style={styles.zoomButton} accessibilityLabel="Уменьшить">
-          <Ionicons name="remove" size={22} color={COLORS.gray900} />
+        <MapFloatingDivider />
+        <Pressable
+          onPress={handleZoom(onZoomOut)}
+          style={styles.zoomButton}
+          accessibilityLabel="Уменьшить"
+        >
+          <Ionicons name="remove" size={20} color={DARK.textPrimary} />
         </Pressable>
       </MapFloatingPanel>
 
-      <MapCircleButton icon="navigate-outline" onPress={onLocatePress} />
+      <MapCircleButton icon="navigate" onPress={onLocatePress} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: SPACING.sm,
     alignItems: 'center',
   },
   zoomButton: {
@@ -47,10 +65,5 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  zoomDivider: {
-    height: 1,
-    backgroundColor: COLORS.gray100,
-    marginHorizontal: 8,
   },
 });

@@ -10,13 +10,22 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UpdateRequiredScreen, useAppVersionGate } from '@/features/appVersion';
 import { useAuthBootstrap } from '@/features/auth';
 import { SheetsProvider } from '@/features/sheets';
+import { useAppFonts } from '@/hooks/useAppFonts';
 import { usePushNotificationHandlers } from '@/hooks/usePushNotificationHandlers';
 import { store } from '@/store/store';
 
 function RootNavigator() {
+  const fontsLoaded = useAppFonts();
   const versionGate = useAppVersionGate();
   useAuthBootstrap();
   usePushNotificationHandlers();
+
+  // Шрифты — до любого реального UI, чтобы не было заметного мигания
+  // системным шрифтом с последующей подменой на Inter. На холодном
+  // старте — доли секунды, дальше кешируется системой.
+  if (!fontsLoaded) {
+    return null;
+  }
 
   // Самая первая проверка при старте, ещё до входа — см. useAppVersionGate.
   if (versionGate.blocked) {

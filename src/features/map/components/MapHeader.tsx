@@ -1,8 +1,9 @@
+import { BlurView } from 'expo-blur';
 import { StyleSheet, View } from 'react-native';
 
 import { AppLogo } from '@/components/ui/AppLogo';
 import { HeaderUserActions } from '@/components/ui/HeaderUserActions';
-import { COLORS, SHADOW } from '@/constants/theme';
+import { DARK, DARK_SHADOW, RADIUS } from '@/constants/theme';
 import { useCourierAvatar } from '@/features/profile/hooks/useCourierAvatar';
 
 type MapHeaderProps = {
@@ -15,16 +16,16 @@ export function MapHeader({ onNotificationsPress, onAvatarPress }: MapHeaderProp
 
   return (
     <View style={styles.container}>
-      <View style={[styles.logoBlock, SHADOW.soft]}>
+      <BlurView intensity={50} tint="dark" style={[styles.logoBlock, DARK_SHADOW.button]}>
         <AppLogo />
-      </View>
+      </BlurView>
 
       <HeaderUserActions
         fullName={fullName}
         photoUrl={photoUrl}
         onNotificationsPress={onNotificationsPress}
         onAvatarPress={onAvatarPress}
-        elevated
+        dark
       />
     </View>
   );
@@ -37,8 +38,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   logoBlock: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
+    backgroundColor: DARK.glass,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: DARK.hairline,
     padding: 6,
+    overflow: 'hidden',
   },
 });

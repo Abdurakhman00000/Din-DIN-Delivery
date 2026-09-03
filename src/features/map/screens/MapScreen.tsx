@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   useMarkDeliveredMutation,
@@ -11,6 +12,8 @@ import type { ActiveDelivery, ChecklistItemIn, ProblemType } from '@/features/de
 import { useCourierSession } from '@/features/shifts';
 import { useGlobalOverlayOpen } from '@/hooks/useGlobalOverlayOpen';
 import { setActiveDeliveryForTracking } from '@/services/location/locationTracker';
+import { DARK, SPACING } from '@/constants/theme';
+import { extractApiErrorMessage } from '@/utils/apiError';
 
 import { ActiveTripCard } from '../components/ActiveTripCard';
 import { ChecklistSheet } from '../components/ChecklistSheet';
@@ -22,8 +25,7 @@ import {
 import { CourierMarker } from '../components/CourierMarker';
 import { GoOnlineButton } from '../components/GoOnlineButton';
 import { MapHeader } from '../components/MapHeader';
-import { MapSearchSheet } from '../components/MapSearchSheet';
-import { MapLeftControls, MapRightControls } from '../components/MapSideControls';
+import { MapRightControls } from '../components/MapSideControls';
 import { OnlineToast } from '../components/OnlineToast';
 import { OrderSwitcher } from '../components/OrderSwitcher';
 import { ProblemSheet } from '../components/ProblemSheet';
@@ -31,16 +33,16 @@ import { ToastBanner } from '../components/ToastBanner';
 import { useCourierPosition } from '../hooks/useCourierPosition';
 
 export function MapScreen() {
+  const insets = useSafeAreaInsets();
   const mapRef = useRef<CourierMapViewRef>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [problemOpen, setProblemOpen] = useState(false);
-  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
 
   const session = useCourierSession();
   const { state } = session;
   const globalOverlayOpen = useGlobalOverlayOpen();
-  const mapInteractionEnabled = !globalOverlayOpen && !searchOpen && !checklistOpen && !problemOpen;
+  const mapInteractionEnabled = !globalOverlayOpen && !checklistOpen && !problemOpen;
 
   // До двух активных доставок разом (bundle — см. useCourierSession).
   // "Фокус" — какую из них сейчас показываем/ведём — локальный выбор
@@ -118,6 +120,11 @@ export function MapScreen() {
     mapRef.current?.clearRoute();
   }, [state, selected, courierPosition]);
 
+  function showToast(message: string, tone: 'success' | 'error' = 'success') {
+    setToast({ message, tone });
+    setTimeout(() => setToast(null), 3000);
+  }
+
   async function handleConfirmChecklist(checked: Record<string, boolean>) {
     if (!selected) {
       return;
@@ -131,9 +138,9 @@ export function MapScreen() {
       setChecklistOpen(false);
     } catch {
       // Ошибка (422 — неполный чек-лист/не совпал состав, 409 — заказ
-      // уже не в том статусе) остаётся видна через pickedUpState.error —
-      // сама шторка не закрывается, курьер видит форму и может
-      // поправить/повторить.
+      // уже не в том статусе) теперь реально показывается в самой
+      // шторке — см. ChecklistSheet's error prop ниже. Шторка не
+      // закрывается, курьер видит форму и может поправить/повторить.
     }
   }
 
@@ -142,9 +149,14 @@ export function MapScreen() {
       await session.goOnline();
       setJustWentOnline(true);
       setTimeout(() => setJustWentOnline(false), 3000);
-    } catch {
-      // Сеть/бэкенд недоступны — просто остаёмся оффлайн, кнопка
-      // снова активна и курьер может повторить попытку сам.
+    } catch (err) {
+      // Раньше здесь молчали при любой ошибке, включая 403 (аккаунт
+      // заблокирован админом) — курьер жал "На линию", ничего не
+      // происходило, и было совершенно непонятно почему.
+      showToast(
+        extractApiErrorMessage(err, 'Не удалось выйти на линию. Попробуйте ещё раз'),
+        'error',
+      );
     }
   }
 
@@ -166,11 +178,6 @@ export function MapScreen() {
     }
   }
 
-  function showToast(message: string) {
-    setToast({ message });
-    setTimeout(() => setToast(null), 3000);
-  }
-
   async function handleDeliver() {
     if (!selected) {
       return;
@@ -179,9 +186,8 @@ export function MapScreen() {
     try {
       await markDelivered({ deliveryId: selected.id }).unwrap();
       showToast(`Заказ №${number} доставлен ✓`);
-    } catch {
-      // См. комментарий в handleConfirmChecklist — ошибка видна через
-      // deliveredState.error, кнопка просто останется активной.
+    } catch (err) {
+      showToast(extractApiErrorMessage(err, 'Не удалось отметить доставку'), 'error');
     }
   }
 
@@ -205,8 +211,9 @@ export function MapScreen() {
           : 'Сообщено, заказ передан диспетчеру',
       );
     } catch {
-      // Ошибка видна через problemState.error, шторка не закрывается —
-      // курьер может поправить и повторить.
+      // Ошибка теперь реально видна в самой шторке — см. ProblemSheet's
+      // error prop ниже. Шторка не закрывается — курьер может поправить
+      // и повторить.
     }
   }
 
@@ -221,12 +228,14 @@ export function MapScreen() {
   }
 
   const showIdleControls = state === 'offline' || state === 'waiting';
+  const showBottomAction = showIdleControls || state === 'to_pickup' || state === 'to_customer';
   const showSwitcher = phaseDeliveries.length > 1;
   const idleLabel = state === 'waiting' ? 'Закончить смену' : 'На линию';
   const idleDisabled = session.isStartingShift || session.isEndingShift;
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <CourierMapView
         ref={mapRef}
         interactionEnabled={mapInteractionEnabled}
@@ -260,37 +269,32 @@ export function MapScreen() {
 
       <OnlineToast visible={justWentOnline} />
 
-      {showIdleControls ? (
-        <>
-          <View style={styles.leftControls}>
-            <MapLeftControls onSearchPress={() => setSearchOpen(true)} />
-          </View>
-          <View style={styles.rightControls}>
-            <MapRightControls
-              onZoomIn={() => mapRef.current?.zoomIn()}
-              onZoomOut={() => mapRef.current?.zoomOut()}
-              onLocatePress={() => mapRef.current?.centerOnBishkek()}
-            />
-          </View>
-          <View style={styles.bottomOverlay}>
+      {/* Зум/локация — всегда доступны, не только в режиме ожидания:
+          раньше пропадали ровно тогда, когда нужнее всего (в процессе
+          доставки), теперь низ-право во всех состояниях, единообразно
+          над нижней кнопкой (в духе Google Maps/Uber/Yandex, не
+          подвешены посередине бокового края экрана, как было). */}
+      <View style={[styles.rightControls, { bottom: insets.bottom + 96 }]}>
+        <MapRightControls
+          onZoomIn={() => mapRef.current?.zoomIn()}
+          onZoomOut={() => mapRef.current?.zoomOut()}
+          onLocatePress={() => mapRef.current?.centerOnBishkek()}
+        />
+      </View>
+
+      {showBottomAction ? (
+        <View style={[styles.bottomOverlay, { bottom: insets.bottom + SPACING.md }]}>
+          {showIdleControls ? (
             <GoOnlineButton label={idleLabel} disabled={idleDisabled} onPress={handleIdlePress} />
-          </View>
-        </>
-      ) : null}
-
-      {state === 'to_pickup' && selected ? (
-        <View style={styles.bottomOverlay}>
-          <GoOnlineButton label="Забрал" onPress={openChecklist} />
-        </View>
-      ) : null}
-
-      {state === 'to_customer' && selected ? (
-        <View style={styles.bottomOverlay}>
-          <GoOnlineButton
-            label={deliveredState.isLoading ? 'Отправляем…' : 'Доставил'}
-            disabled={deliveredState.isLoading}
-            onPress={handleDeliver}
-          />
+          ) : state === 'to_pickup' ? (
+            <GoOnlineButton label="Забрал" onPress={openChecklist} />
+          ) : (
+            <GoOnlineButton
+              label={deliveredState.isLoading ? 'Отправляем…' : 'Доставил'}
+              disabled={deliveredState.isLoading}
+              onPress={handleDeliver}
+            />
+          )}
         </View>
       ) : null}
 
@@ -299,6 +303,11 @@ export function MapScreen() {
           items={selected.items}
           displayNumber={selected.display_number}
           loading={pickedUpState.isLoading}
+          error={
+            pickedUpState.isError
+              ? extractApiErrorMessage(pickedUpState.error, 'Не удалось отметить получение')
+              : null
+          }
           onConfirm={handleConfirmChecklist}
           onCancel={() => setChecklistOpen(false)}
         />
@@ -308,14 +317,17 @@ export function MapScreen() {
         <ProblemSheet
           displayNumber={selected.display_number}
           loading={problemState.isLoading}
+          error={
+            problemState.isError
+              ? extractApiErrorMessage(problemState.error, 'Не удалось отправить')
+              : null
+          }
           onConfirm={handleReportProblem}
           onCancel={() => setProblemOpen(false)}
         />
       ) : null}
 
-      {toast ? <ToastBanner visible={!!toast} message={toast.message} /> : null}
-
-      <MapSearchSheet visible={searchOpen} onClose={() => setSearchOpen(false)} />
+      {toast ? <ToastBanner visible={!!toast} message={toast.message} tone={toast.tone} /> : null}
     </View>
   );
 }
@@ -323,34 +335,28 @@ export function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: DARK.bg,
   },
   topOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
     zIndex: 10,
   },
   tripStack: {
-    gap: 8,
-  },
-  leftControls: {
-    position: 'absolute',
-    left: 16,
-    top: '32%',
+    gap: SPACING.sm,
   },
   rightControls: {
     position: 'absolute',
-    right: 16,
-    top: '32%',
+    right: SPACING.lg,
+    zIndex: 5,
   },
   bottomOverlay: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 12,
+    left: SPACING.lg,
+    right: SPACING.lg,
   },
 });
