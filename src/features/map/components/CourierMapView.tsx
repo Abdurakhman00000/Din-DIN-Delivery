@@ -114,6 +114,17 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
         return new mapgl.Marker(window.map, { coordinates: [lon, lat], icon: COURIER_ICON });
       }
 
+      // Слой на карте существует только внутри текущего "style" — при
+      // первой загрузке карты style ещё пуст и подгружается с сервера
+      // асинхронно; addLayer до этого либо ничего не даёт, либо слой
+      // тут же затирается, когда style всё-таки приходит (см. доку 2ГИС,
+      // "Adding layer after style load" — предупреждение прямым текстом).
+      // Поэтому линию маршрута рисуем не раньше события 'styleload', а
+      // если запрос пришёл раньше — просто запоминаем координаты и
+      // отрисовываем их, когда styleload наконец случится.
+      window.__styleReady = false;
+      window.__lastRouteCoords = null;
+
       window.routeSource = null;
       function clearRouteLine() {
         if (window.routeSource) {
@@ -123,7 +134,7 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
           window.routeSource = null;
         }
       }
-      function drawRouteLine(coords) {
+      function drawRouteLineNow(coords) {
         clearRouteLine();
         var data = {
           type: 'Feature',
@@ -151,6 +162,13 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
         } catch (e) {
           console.warn('drawRouteLine failed', e);
         }
+      }
+      function drawRouteLine(coords) {
+        window.__lastRouteCoords = coords;
+        if (!window.__styleReady) {
+          return; // отрисуется в обработчике 'styleload' ниже
+        }
+        drawRouteLineNow(coords);
       }
 
       // Точки из ответа Routing API приходят как WKT LINESTRING внутри
@@ -200,6 +218,21 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
         }
       }
 
+      // Грубая, но предсказуемая оценка уровня зума по охвату между двумя
+      // точками в градусах — гарантированная подстраховка перед
+      // (необязательным) fitBounds, см. realShowRoute ниже.
+      function zoomForSpan(lonSpan, latSpan) {
+        var span = Math.max(lonSpan, latSpan);
+        if (span < 0.003) return 16;
+        if (span < 0.006) return 15;
+        if (span < 0.012) return 14;
+        if (span < 0.025) return 13;
+        if (span < 0.05) return 12;
+        if (span < 0.1) return 11;
+        if (span < 0.2) return 10;
+        return 9;
+      }
+
       window.__routeRequestId = 0;
 
       function realShowRoute(fromLon, fromLat, toLon, toLat, endLabel) {
@@ -225,16 +258,28 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
           window.pointMarkers.push(makeCourierMarker(fromLon, fromLat));
         }
 
+        // Гарантированная базовая рамка — не зависит от fitBounds (ниже),
+        // считаем сами по охвату между точками, чтобы обе точки точно
+        // попали в кадр, даже если по какой-то причине fitBounds на
+        // конкретном устройстве не сработает (см. zoomForSpan).
+        window.map.setCenter([(fromLon + toLon) / 2, (fromLat + toLat) / 2]);
+        window.map.setZoom(zoomForSpan(Math.abs(fromLon - toLon), Math.abs(fromLat - toLat)));
+
         try {
+          // Уточняет рамку с отступами под карточку сверху/кнопку снизу —
+          // необязательный бонус поверх гарантированной рамки выше.
+          // fitBounds ждёт объект {southWest, northEast}, не вложенный
+          // массив — и padding объектом {top,right,bottom,left}, не
+          // числом (проверено по официальным типам @2gis/mapgl).
           window.map.fitBounds(
-            [
-              [Math.min(fromLon, toLon), Math.min(fromLat, toLat)],
-              [Math.max(fromLon, toLon), Math.max(fromLat, toLat)],
-            ],
-            { padding: 60 },
+            {
+              southWest: [Math.min(fromLon, toLon), Math.min(fromLat, toLat)],
+              northEast: [Math.max(fromLon, toLon), Math.max(fromLat, toLat)],
+            },
+            { padding: { top: 140, right: 50, bottom: 160, left: 50 } },
           );
         } catch (e) {
-          console.warn('fitBounds failed', e);
+          console.warn('fitBounds failed, staying on the manual center/zoom above', e);
         }
 
         fetchRoute(fromLon, fromLat, toLon, toLat)
@@ -261,6 +306,7 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
 
       function realClearRoute() {
         window.__routeRequestId++; // гасит ответ ещё летящего запроса
+        window.__lastRouteCoords = null;
         clearRouteLine();
         clearMarkers();
         window.map.setCenter(CENTER);
@@ -300,6 +346,12 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
             center: CENTER,
             zoom: 13,
             key: MAPGL_KEY,
+          });
+          window.map.on('styleload', function () {
+            window.__styleReady = true;
+            if (window.__lastRouteCoords) {
+              drawRouteLineNow(window.__lastRouteCoords);
+            }
           });
           window.__mapReady = true;
           if (window.__pendingCall) {
