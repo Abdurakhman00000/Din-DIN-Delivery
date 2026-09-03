@@ -10,6 +10,11 @@ export type CourierMapViewRef = {
   zoomIn: () => void;
   zoomOut: () => void;
   centerOnBishkek: () => void;
+  /** Центрирует карту на реальных координатах (например, живая позиция
+   * курьера) — в отличие от centerOnBishkek выше, который всегда ведёт
+   * на захардкоженный центр города. Зум не трогает, если уже ближе 15 —
+   * не выталкивает курьера, который сам приблизил карту. */
+  centerOn: (coordinate: MapCoordinate) => void;
   showRoute: (from: MapCoordinate, to: MapCoordinate, endLabel?: string) => void;
   clearRoute: () => void;
 };
@@ -332,6 +337,16 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
           window.map.setZoom(13);
         }, []);
       };
+      window.centerOn = function (lon, lat) {
+        callWhenReady(function () {
+          window.map.setCenter([lon, lat]);
+          // Не выталкиваем зум ниже 15 (уровень "видно свою улицу"), но и
+          // не откатываем назад, если курьер сам уже приблизил карту сильнее.
+          if (window.map.getZoom() < 15) {
+            window.map.setZoom(15);
+          }
+        }, []);
+      };
       window.setMapInteractive = function () {
         // Основная защита от жестов под шторками — pointerEvents="none"
         // на самом WebView, RN-уровня (см. CourierMapView.tsx) — она
@@ -389,6 +404,11 @@ export const CourierMapView = forwardRef<CourierMapViewRef, CourierMapViewProps>
       },
       centerOnBishkek: () => {
         webViewRef.current?.injectJavaScript('window.centerOnBishkek(); true;');
+      },
+      centerOn: (coordinate) => {
+        webViewRef.current?.injectJavaScript(
+          `window.centerOn(${coordinate.longitude},${coordinate.latitude}); true;`,
+        );
       },
       showRoute: (from, to, endLabel) => {
         const label = JSON.stringify(endLabel ?? 'A');

@@ -63,7 +63,11 @@ export function MapScreen() {
   const [markDelivered, deliveredState] = useMarkDeliveredMutation();
   const [reportProblem, problemState] = useReportProblemMutation();
 
-  const courierPosition = useCourierPosition(state === 'to_pickup' || state === 'to_customer');
+  // Раньше следили только во время активной доставки (для дистанции на
+  // карточке) — теперь всегда: нужна и для авто-слежения карты за собой
+  // в режиме ожидания (см. эффект ниже), и для кнопки "моя локация".
+  // Дёшево: сам хук ничего не делает без выданного разрешения.
+  const courierPosition = useCourierPosition(true);
 
   // Реальные distance/duration от 2ГИС Routing API для текущего показанного
   // маршрута — обновляется через onRouteInfo у CourierMapView (сообщение из
@@ -119,6 +123,20 @@ export function MapScreen() {
 
     mapRef.current?.clearRoute();
   }, [state, selected, courierPosition]);
+
+  // Авто-слежение карты за живой позицией курьера в режиме ожидания —
+  // ровно то поведение, которое CourierMarker и задумывался изображать
+  // ("карта двигается под ним, не наоборот", см. его же docstring): без
+  // этого эффекта фиксированная в центре экрана точка "я здесь" ничем не
+  // привязана к реальным координатам и просто висит там же, где карта
+  // случайно оказалась (дефолтный центр Бишкека или последний ручной
+  // разворот). Во время активной доставки не трогаем — там курьера ведёт
+  // showRoute выше через свой собственный маркер внутри карты.
+  useEffect(() => {
+    if ((state === 'offline' || state === 'waiting') && courierPosition) {
+      mapRef.current?.centerOn(courierPosition);
+    }
+  }, [state, courierPosition]);
 
   function showToast(message: string, tone: 'success' | 'error' = 'success') {
     setToast({ message, tone });
@@ -278,7 +296,18 @@ export function MapScreen() {
         <MapRightControls
           onZoomIn={() => mapRef.current?.zoomIn()}
           onZoomOut={() => mapRef.current?.zoomOut()}
-          onLocatePress={() => mapRef.current?.centerOnBishkek()}
+          onLocatePress={() => {
+            // Раньше здесь всегда был захардкоженный центр Бишкека вместо
+            // настоящих координат курьера — основная жалоба "стоит не
+            // там, где я". Реальная позиция есть — идём на неё; нет (ещё
+            // не пришла с GPS/нет разрешения) — тот же безопасный дефолт,
+            // что и раньше, а не пустое место.
+            if (courierPosition) {
+              mapRef.current?.centerOn(courierPosition);
+            } else {
+              mapRef.current?.centerOnBishkek();
+            }
+          }}
         />
       </View>
 
