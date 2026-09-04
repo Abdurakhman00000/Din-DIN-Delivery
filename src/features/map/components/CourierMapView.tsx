@@ -119,61 +119,47 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
         return new mapgl.Marker(window.map, { coordinates: [lon, lat], icon: COURIER_ICON });
       }
 
-      // Слой на карте существует только внутри текущего "style" — при
-      // первой загрузке карты style ещё пуст и подгружается с сервера
-      // асинхронно; addLayer до этого либо ничего не даёт, либо слой
-      // тут же затирается, когда style всё-таки приходит (см. доку 2ГИС,
-      // "Adding layer after style load" — предупреждение прямым текстом).
-      // Поэтому линию маршрута рисуем не раньше события 'styleload', а
-      // если запрос пришёл раньше — просто запоминаем координаты и
-      // отрисовываем их, когда styleload наконец случится.
-      window.__styleReady = false;
-      window.__lastRouteCoords = null;
-
-      window.routeSource = null;
+      // 04.09.2026: было GeoJsonSource+addLayer с фильтром-выражением —
+      // низкоуровневый API, требующий ждать 'styleload' (слой живёт
+      // только внутри текущего style, addLayer раньше либо не даёт
+      // ничего, либо тут же затирается) — и по факту не рисовавший линию
+      // вообще, ни разу (проверено по скриншотам с реального устройства:
+      // маркеры A/Б есть, соединяющей линии нет, ни сразу, ни после
+      // фетча реального маршрута). mapgl.Polyline — тот же класс объектов,
+      // что и mapgl.Marker (makeCourierMarker/makePointMarker выше), а
+      // маркеры рендерятся сразу и без ожидания styleload — переезд на
+      // Polyline убирает саму гонку, а не подкручивает её.
+      window.routeLines = [];
       function clearRouteLine() {
-        if (window.routeSource) {
-          try { window.map.removeLayer('route-line'); } catch (e) {}
-          try { window.map.removeLayer('route-line-halo'); } catch (e) {}
-          try { window.routeSource.destroy(); } catch (e) {}
-          window.routeSource = null;
-        }
+        window.routeLines.forEach(function (line) {
+          try { line.destroy(); } catch (e) {}
+        });
+        window.routeLines = [];
       }
-      function drawRouteLineNow(coords) {
+      function drawRouteLine(coords) {
         clearRouteLine();
-        var data = {
-          type: 'Feature',
-          properties: { routeId: 'active' },
-          geometry: { type: 'LineString', coordinates: coords },
-        };
         try {
-          window.routeSource = new mapgl.GeoJsonSource(window.map, { data: data });
-          var filter = ['match', ['sourceAttr', 'routeId'], ['active'], true, false];
-          // Белая подложка снизу + зелёная линия сверху — тот же приём,
-          // что раньше давал dashArray в Leaflet-варианте, просто другой
-          // визуальный язык (сплошная линия с halo вместо пунктира).
-          window.map.addLayer({
-            id: 'route-line-halo',
-            type: 'line',
-            filter: filter,
-            style: { color: '#ffffff', width: 8 },
-          });
-          window.map.addLayer({
-            id: 'route-line',
-            type: 'line',
-            filter: filter,
-            style: { color: '#16A34A', width: 4 },
-          });
+          // Белая подложка снизу (zIndex ниже) + зелёная линия сверху —
+          // тот же визуальный приём, что раньше пытался дать halo-слой.
+          window.routeLines.push(
+            new mapgl.Polyline(window.map, {
+              coordinates: coords,
+              width: 8,
+              color: '#ffffff',
+              zIndex: 1,
+            }),
+          );
+          window.routeLines.push(
+            new mapgl.Polyline(window.map, {
+              coordinates: coords,
+              width: 4,
+              color: '#16A34A',
+              zIndex: 2,
+            }),
+          );
         } catch (e) {
           console.warn('drawRouteLine failed', e);
         }
-      }
-      function drawRouteLine(coords) {
-        window.__lastRouteCoords = coords;
-        if (!window.__styleReady) {
-          return; // отрисуется в обработчике 'styleload' ниже
-        }
-        drawRouteLineNow(coords);
       }
 
       // Точки из ответа Routing API приходят как WKT LINESTRING внутри
@@ -311,7 +297,6 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
 
       function realClearRoute() {
         window.__routeRequestId++; // гасит ответ ещё летящего запроса
-        window.__lastRouteCoords = null;
         clearRouteLine();
         clearMarkers();
         window.map.setCenter(CENTER);
@@ -361,12 +346,6 @@ function buildMapHtml(vehicle: 'foot' | 'scooter') {
             center: CENTER,
             zoom: 13,
             key: MAPGL_KEY,
-          });
-          window.map.on('styleload', function () {
-            window.__styleReady = true;
-            if (window.__lastRouteCoords) {
-              drawRouteLineNow(window.__lastRouteCoords);
-            }
           });
           window.__mapReady = true;
           if (window.__pendingCall) {
