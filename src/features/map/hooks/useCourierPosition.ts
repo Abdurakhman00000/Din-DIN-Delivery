@@ -42,6 +42,28 @@ export function useCourierPosition(enabled: boolean): MapCoordinate | null {
       }
     }
 
+    // Свежий фикс (getCurrentPositionAsync) может занимать 5-10 секунд
+    // на холодную (жалоба "задержка при определении местоположения") —
+    // пока он не пришёл, показываем последнюю известную позицию (обычно
+    // мгновенно, из кеша ОС) вместо пустоты/дефолтного центра карты.
+    // Разница в точности не критична: это тот же "лучше приблизительно
+    // сейчас, чем идеально через 10 секунд" принцип.
+    Location.getLastKnownPositionAsync()
+      .then((last) => {
+        if (!cancelled && last) {
+          // Функциональная форма — если свежий фикс из readPosition уже
+          // успел прийти первым (реже, но возможно), не затираем его
+          // более старой кэшированной позицией.
+          setPosition(
+            (prev) => prev ?? { latitude: last.coords.latitude, longitude: last.coords.longitude },
+          );
+        }
+      })
+      .catch(() => {
+        // Нет закешированной позиции (первый запуск/выключена служба
+        // геолокации) — не страшно, дождёмся свежего фикса ниже.
+      });
+
     readPosition();
     const interval = setInterval(readPosition, REFRESH_INTERVAL_MS);
     return () => {
